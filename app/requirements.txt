@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+xgboost
+joblib
+boto3
+numpy
+pandas
+requests
+transformers
+torch
