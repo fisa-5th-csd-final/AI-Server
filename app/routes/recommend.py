@@ -12,7 +12,7 @@ def generate_recommendation(spending_data: dict):
         Decimal("0")
     )
 
-    income = spending_data.get("income", Decimal("0"))
+    income = spending_data.get("income") or Decimal("0")
     ratio = (total_spending / income * Decimal("100")) if income != Decimal("0") else Decimal("0")
     summary = f"총 지출은 {total_spending:,}원이며, 소득 대비 지출 비율은 약 {float(ratio):.1f}%입니다."
 
@@ -30,4 +30,4 @@ def recommend(request: RecommendRequest):
         summary, recs, comment = generate_recommendation(request.spending_data.model_dump())
         return RecommendResponse(summary=summary, recommendations=recs, comment=comment)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="내부 서버 오류가 발생했습니다.")
