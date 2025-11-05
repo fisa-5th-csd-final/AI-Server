@@ -14,7 +14,7 @@ def generate_recommendation(spending_data: dict):
 
     income = spending_data.get("income", Decimal("0"))
     ratio = (total_spending / income * Decimal("100")) if income != Decimal("0") else Decimal("0")
-    summary = f"총 지출은 {total_spending:,}원이며, 소득 대비 지출 비율은 약 {ratio:.1f}%입니다."
+    summary = f"총 지출은 {total_spending:,}원이며, 소득 대비 지출 비율은 약 {float(ratio):.1f}%입니다."
 
     recommendations = [
         "임시 추천: LLM 서비스가 준비되면 더 스마트한 결과를 보여드릴 예정입니다."
@@ -27,7 +27,7 @@ def generate_recommendation(spending_data: dict):
 @router.post("/recommend", response_model=RecommendResponse)
 def recommend(request: RecommendRequest):
     try:
-        summary, recs, comment = generate_recommendation(request.spending_data)
+        summary, recs, comment = generate_recommendation(request.spending_data.model_dump())
         return RecommendResponse(summary=summary, recommendations=recs, comment=comment)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
