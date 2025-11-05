@@ -7,7 +7,7 @@ router = APIRouter()
 @router.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest):
     try:
-        result = predict_risk(request.dict())
+        result = predict_risk(request.model_dump())
         return PredictResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction Error: {str(e)}")
