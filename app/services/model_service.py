@@ -77,7 +77,7 @@ def predict_risk(features: Dict):
 
     except Exception as e:
         logger.exception(f"Prediction Error: {e}")
-        raise Exception(f"Prediction Error: {str(e)}")
+        raise
 
 
 def generate_explanation(features: Dict, prob: float, label: int):
