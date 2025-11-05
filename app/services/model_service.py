@@ -3,18 +3,28 @@ import joblib, json
 import numpy as np
 import pandas as pd
 from typing import Dict
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,  # DEBUG, INFO, WARNING, ERROR 선택 가능
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 MODEL_PATH = "app/models/xgb_delinquency_model_v2.pkl"
 ENCODE_MAP_PATH = "app/models/category_encoding_map_v2.json"
 
+logger.info("모델 및 인코딩 맵 로드 중...")
 bst = joblib.load(MODEL_PATH)
 with open(ENCODE_MAP_PATH, "r", encoding="utf-8") as f:
     encoding_maps = json.load(f)
 
 THRESHOLD = 0.88
 MODEL_VERSION = "xgb_delinquency_model_v2"
+logger.info(f"모델 로드 완료 ({MODEL_VERSION}), Threshold={THRESHOLD}")
 
 def preprocess_input(features: Dict):
+    logger.debug(f"[입력 데이터 수신] features keys: {list(features.keys())}")
     df = pd.DataFrame([features])
 
     # 불필요 컬럼 제거
@@ -42,6 +52,7 @@ def preprocess_input(features: Dict):
 
     # 모든 수치를 float32로 변환 (xgb 입력 표준)
     df = df.astype(np.float32)
+    logger.debug(f"[전처리 완료] 컬럼 수: {df.shape[1]}, 결측치 수: {df.isna().sum().sum()}")
 
     return df
 
@@ -54,6 +65,8 @@ def predict_risk(features: Dict):
         label = int(prob > THRESHOLD)
         explanation = generate_explanation(features, prob, label)
 
+        logger.info(f"[예측 결과] 확률={prob:.4f}, 라벨={label}, 임계값={THRESHOLD}, 버전={MODEL_VERSION}")
+
         return {
             "delinquency_probability": round(prob, 4),
             "delinquency_label": label,
@@ -63,6 +76,7 @@ def predict_risk(features: Dict):
         }
 
     except Exception as e:
+        logger.exception(f"Prediction Error: {e}")
         raise Exception(f"Prediction Error: {str(e)}")
 
 
