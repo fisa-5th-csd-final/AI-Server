@@ -5,6 +5,9 @@ import pandas as pd
 from typing import Dict
 import logging
 
+import matplotlib.pyplot as plt
+import xgboost as xgb 
+
 logging.basicConfig(
     level=logging.INFO,  # DEBUG, INFO, WARNING, ERROR 선택 가능
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -99,3 +102,8 @@ def generate_explanation(features: Dict, prob: float, label: int):
             return f"소비 및 대출 구조상 중간 수준의 위험이 감지되었습니다."
     else:
         return f"소득 대비 소비 비율이 {spending_ratio*100:.0f}%로 안정적이며, 잔액이 충분해 연체 위험이 낮습니다."
+
+
+# 특성 중요도 시각화 코드 추가 
+xgb.plot_importance(bst, importance_type="gain", max_num_features=38)
+plt.show()
