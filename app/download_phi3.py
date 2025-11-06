@@ -9,7 +9,7 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",      # GPU 있으면 자동 할당
-    torch_dtype="auto",     # mixed precision 자동
+    dtype="auto",     # mixed precision 자동
 )
 
 tokenizer.save_pretrained(SAVE_PATH)

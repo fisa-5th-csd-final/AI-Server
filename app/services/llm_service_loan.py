@@ -1,6 +1,4 @@
-from app.services.llm_loader import get_generator
-
-generator = get_generator()
+from app.services.llm_loader import safe_generate
 
 def generate_loan_comment(data: dict) -> str:
     loan_name = data.get("loan_name", "대출 상품")
@@ -46,7 +44,7 @@ def generate_loan_comment(data: dict) -> str:
         },
     ]
 
-    result = generator(messages, max_new_tokens=200, temperature=0.4, top_p=0.9, do_sample=False)
+    result = safe_generate(messages, max_new_tokens=250, temperature=0.4, top_p=0.9, do_sample=False)
 
     text = ""
     if isinstance(result, list):
