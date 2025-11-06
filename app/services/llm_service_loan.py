@@ -11,22 +11,50 @@ def generate_loan_comment(data: dict) -> str:
     remain = data.get("remaining_principal", 0)
     total = data.get("principal_amount", 0)
 
-    prompt = (
-        f"다음 대출 정보를 보고 사용자의 상태를 짧고 구체적으로 설명하는 코멘트를 작성하세요. "
-        f"1~2문장 이내로, 친절하지만 간결하게.\n\n"
-        f"[대출 정보]\n"
-        f"- 상품명: {loan_name}\n"
-        f"- 금리: {rate}%\n"
-        f"- 상환진척률: {repay}%\n"
-        f"- 연체확률: {delinquency}\n"
-        f"- 다음 납입일: {due}\n"
-        f"- 남은 원금: {remain}원 / 총 원금: {total}원\n\n"
-        f"[출력 예시]\n"
-        f"- 납입 진척률이 높고 연체 위험이 낮아 안정적인 상환 상태입니다.\n"
-        f"- 금리가 다소 높지만, 상환이 꾸준해 긍정적입니다.\n\n"
-        f"코멘트:"
+    # === 영어 기반 프롬프트 ===
+    prompt = f"""
+You are a financial assistant who writes short, natural comments in Korean for banking apps.
+Analyze the loan information below and write a concise comment (1–2 sentences) describing
+the customer's repayment and risk status. The tone should be warm, professional, and encouraging.
+
+[Loan Information]
+- Loan Product: {loan_name}
+- Interest Rate: {rate:.2f}%
+- Repayment Progress: {repay:.1f}%
+- Delinquency Probability: {delinquency:.2f}
+- Next Due Date: {due}
+- Remaining Principal: {remain:,.0f}원
+- Total Principal: {total:,.0f}원
+
+Instructions:
+1. Write in **Korean**.
+2. Keep it **1–2 sentences long**.
+3. Mention repayment stability or risk clearly.
+4. If the delinquency probability is high (>0.7), include a gentle warning.
+5. Do NOT use markdown, lists, or English words in the output.
+
+Example outputs:
+- 상환 진척률이 높고 연체 위험이 낮아 안정적인 상태입니다.
+- 금리가 다소 높지만 상환이 꾸준해 긍정적입니다.
+- 연체 위험이 다소 있으니 납입일을 놓치지 않도록 주의하세요.
+
+Output:
+Comment (in Korean):
+""".strip()
+
+    result = generator(
+        prompt,
+        max_new_tokens=70,
+        temperature=0.6,  # 문체 안정화
+        top_p=0.9,
+        do_sample=True
     )
 
-    result = generator(prompt, max_new_tokens=60, temperature=0.7, do_sample=True)
-    comment = result[0]["generated_text"].split("코멘트:")[-1].strip()
+    # 결과 텍스트 정제
+    text = result[0]["generated_text"]
+    comment = text.split("Comment (in Korean):")[-1].strip().split("\n")[0]
+
+    if not comment or len(comment) < 5:
+        comment = "대출 상환이 안정적으로 진행되고 있습니다."
+
     return comment
