@@ -1,6 +1,4 @@
-from app.services.llm_loader import get_generator
-
-generator = get_generator()
+from app.services.llm_loader import safe_generate
 
 def generate_spending_comment(salary: float, spending: dict, prev_spending: dict = None) -> str:
     total_spend = sum(spending.values())
@@ -51,7 +49,7 @@ def generate_spending_comment(salary: float, spending: dict, prev_spending: dict
         },
     ]
 
-    result = generator(messages, max_new_tokens=200, temperature=0.4, top_p=0.9, do_sample=False)
+    result = safe_generate(messages, max_new_tokens=250, temperature=0.4, top_p=0.9, do_sample=False)
 
     text = ""
     if isinstance(result, list):
