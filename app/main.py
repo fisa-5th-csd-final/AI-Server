@@ -1,5 +1,13 @@
+import logging
 from fastapi import FastAPI
 from app.routes import predict, recommend, simulation, insight_loan, insight_spending
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("app")
+logger.info("AI API Server 로딩 중")
 
 app = FastAPI(title="AI Risk API", version="1.0")
 
