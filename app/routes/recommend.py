@@ -1,23 +1,30 @@
-from decimal import Decimal
 from fastapi import APIRouter, HTTPException
 from app.schemas.recommend_schema import RecommendRequest, RecommendResponse
 from app.services.llm_service_spending import generate_spending_comment
+import traceback
 
 router = APIRouter()
 
 @router.post("/recommend", response_model=RecommendResponse)
 def recommend(request: RecommendRequest):
     try:
-        # 입력값에서 데이터 추출
-        data = request.spending_data.model_dump()
+        # 요청 데이터 추출
+        spending_data = request.spending_data.model_dump()
+        avg_spending_data = request.avg_spending_data.model_dump() if request.avg_spending_data else {}
 
-        salary = float(data.get("income", 0))
-        spending = {k: float(v) for k, v in data.items() if k not in ("income", None) and v is not None}
+        print("입력 spending_data:", spending_data)
+        print("입력 avg_spending_data:", avg_spending_data)
 
-        # LLM으로 코멘트 생성
-        comment = generate_spending_comment(salary=salary, spending=spending)
+        # LLM 분석 호출
+        comment = generate_spending_comment(
+            spending_data=spending_data,
+            avg_spending_data=avg_spending_data
+        )
 
+        print("생성된 코멘트:", comment)
         return RecommendResponse(comment=comment)
-    
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail="내부 서버 오류가 발생했습니다.")
+        print("에러 발생:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"내부 서버 오류: {e}")
