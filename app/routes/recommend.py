@@ -1,7 +1,7 @@
 from decimal import Decimal
 from fastapi import APIRouter, HTTPException
 from app.schemas.recommend_schema import RecommendRequest, RecommendResponse
-from app.services.llm_loader import generate_spending_comment
+from app.services.llm_service_spending import generate_spending_comment
 
 router = APIRouter()
 
