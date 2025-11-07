@@ -20,6 +20,10 @@ class RecommendRequest(BaseModel):
         ...,
         description="사용자의 소비 데이터 (각 항목별 금액 포함)"
     )
+    avg_spending_data: Optional[SpendingData] = Field(
+        ..., 
+        description="평균 소비 데이터 (비교용)"
+    )
 
 
 class RecommendResponse(BaseModel):
