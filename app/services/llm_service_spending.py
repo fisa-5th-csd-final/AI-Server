@@ -3,12 +3,11 @@ from app.services.llm_loader import safe_generate
 def generate_spending_comment(
     spending_data: dict,
     avg_spending_data: dict,
-    peer_age: str = "20대 후반",
-    peer_income_range: str = "월 300~400만 원대"
+    peer_age: str = "20대 후반"
 ) -> str:
     """
     사용자 소비 데이터를 또래 평균 소비 데이터와 비교하여 코멘트를 생성합니다.
-    예: '20대 후반, 월 300~400만 원대 소비자 평균보다 식비를 12% 더 많이 쓰셨습니다.'
+    예: '20대 후반 소비자 평균보다 식비를 12% 더 많이 쓰셨습니다.'
     """
 
     # 수입 및 소비 항목 분리
@@ -65,7 +64,7 @@ def generate_spending_comment(
                 f"- Monthly Income: {salary:,.0f}원\n"
                 f"- Total Spending: {total_spend:,.0f}원 ({ratio*100:.1f}% of income)\n"
                 f"- Top Spending Category: {top_category} ({top_amount:,.0f}원)\n"
-                f"- Peer Group: {peer_age}, {peer_income_range}\n"
+                f"- Peer Group: {peer_age}\n"
                 f"- Peer Comparison: {peer_info or '정보 없음'}\n"
                 f"- Key Peer Category: {peer_summary or '정보 없음'}\n\n"
                 "[User Category Breakdown]\n" +
@@ -81,8 +80,8 @@ def generate_spending_comment(
                 "5. Use a polite and factual tone (~습니다 style).\n"
                 "6. Avoid '즉', '따라서', '결과적으로'.\n\n"
                 "Example outputs:\n"
-                "- 20대 후반, 월 300~400만 원대 소비자 평균과 비슷한 수준입니다.\n"
-                "- 20대 후반, 월 300~400만 원대 평균보다 식비가 10% 높으며, 교통비는 평균보다 낮습니다.\n\n"
+                "- 20대 후반 소비자 평균과 비슷한 수준입니다.\n"
+                "- 20대 후반 평균보다 식비가 10% 높으며, 교통비는 평균보다 낮습니다.\n\n"
                 "Answer:"
             ),
         },
@@ -111,6 +110,6 @@ def generate_spending_comment(
 
     comment = text.strip().split("\n")[0].replace("�", "").strip()
     if len(comment) < 5:
-        comment = f"{peer_age}, {peer_income_range} 소비자 평균과 유사한 수준입니다."
+        comment = f"{peer_age} 소비자 평균과 유사한 수준입니다."
 
     return comment
