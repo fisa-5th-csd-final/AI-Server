@@ -23,6 +23,4 @@ class RecommendRequest(BaseModel):
 
 
 class RecommendResponse(BaseModel):
-    summary: str = Field(..., description="소비 요약")
-    recommendations: List[str] = Field(..., description="소비 개선 추천 목록")
     comment: str = Field(..., description="AI의 코멘트")
