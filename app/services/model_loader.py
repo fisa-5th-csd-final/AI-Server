@@ -3,15 +3,15 @@ import json
 import logging
 import threading
 
-MODEL_PATH = "app/models/xgb_delinquency_model_v2.pkl"
-ENCODE_MAP_PATH = "app/models/category_encoding_map_v2.json"
+MODEL_PATH = "app/models/lightgbm_risk_model.pkl"
+ENCODE_MAP_PATH = "app/models/encoding_map.json"
 
 logger = logging.getLogger(__name__)
 
 bst = None
 encoding_maps = None
-THRESHOLD = 0.88
-MODEL_VERSION = "xgb_delinquency_model_v2"
+THRESHOLD = 0.344
+MODEL_VERSION = "lightgbm_risk_model"
 
 _model_lock = threading.Lock()
 
@@ -31,7 +31,7 @@ def load_model():
             return bst, encoding_maps
 
         try:
-            logger.info("[Model Loader] XGBoost 모델 및 인코딩 맵 로드 중...")
+            logger.info("[Model Loader] LightGBM 모델 및 인코딩 맵 로드 중...")
             bst = joblib.load(MODEL_PATH)
             with open(ENCODE_MAP_PATH, "r", encoding="utf-8") as f:
                 encoding_maps = json.load(f)
