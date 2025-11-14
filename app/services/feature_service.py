@@ -353,6 +353,4 @@ def build_user_features(user_id: int, db: Session):
         "income_to_loan_ratio": income_to_loan_ratio,
         "debt_to_income_ratio": debt_to_income_ratio,
         "loan_usage_ratio": loan_usage_ratio,
-
-        "is_delinquent_any": is_delinquent_any
     }
