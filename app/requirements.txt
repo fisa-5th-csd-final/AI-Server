@@ -12,3 +12,6 @@ torch
 accelerate
 huggingface_hub
 matplotlib
+SQLAlchemy
+pymysql
+python-dotenv
