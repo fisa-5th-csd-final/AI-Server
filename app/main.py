@@ -1,6 +1,10 @@
 import logging
 from fastapi import FastAPI
 from app.routes import predict, recommend, simulation, insight_loan
+from dotenv import load_dotenv
+
+# .env 불러오기
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,

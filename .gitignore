@@ -20,7 +20,7 @@ __pycache__/
 app/models/lightgbm_risk_model.pkl
 
 # HuggingFace 로컬 다운로드 모델
-app/models/phi3-mini-4k-instruct/*
+app/models/phi3-mini-4k-instruct/
 
 # 모델 관련 대용량 파일 확장자
 *.bin
