@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 pydantic
-xgboost
+lightgbm
 joblib
 boto3
 numpy
