@@ -1,32 +1,55 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
 import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
 
-# 환경변수에서 값 가져오기
-MYSQL_USER = os.getenv("MYSQL_USER")
-MYSQL_PW = os.getenv("MYSQL_PW")
-MYSQL_HOST = os.getenv("MYSQL_HOST")
-MYSQL_PORT = os.getenv("MYSQL_PORT", "3306")
-MYSQL_DB = os.getenv("MYSQL_DB")
+load_dotenv()
 
-# mysql+pymysql://user:pw@host:port/db
-DATABASE_URL = (
-    f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PW}"
-    f"@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
+CORE_DB_URL = (
+    f"mysql+pymysql://{os.getenv('CORE_BANK_USER')}:{os.getenv('CORE_BANK_PW')}"
+    f"@{os.getenv('CORE_BANK_HOST')}:{os.getenv('CORE_BANK_PORT')}/"
+    f"{os.getenv('CORE_BANK_DB')}?charset=utf8mb4"
 )
 
-engine = create_engine(
-    DATABASE_URL,
+core_engine = create_engine(
+    CORE_DB_URL,
     pool_pre_ping=True,
-    pool_recycle=3600,
+    pool_recycle=3600
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+CoreSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=core_engine
+)
 
-def get_db():
-    db = SessionLocal()
+def get_core_db():
+    db = CoreSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+FEATURE_DB_URL = (
+    f"mysql+pymysql://{os.getenv('FEATURE_DB_USER')}:{os.getenv('FEATURE_DB_PW')}"
+    f"@{os.getenv('FEATURE_DB_HOST')}:{os.getenv('FEATURE_DB_PORT')}/"
+    f"{os.getenv('FEATURE_DB_NAME')}?charset=utf8mb4"
+)
+
+feature_engine = create_engine(
+    FEATURE_DB_URL,
+    pool_pre_ping=True,
+    pool_recycle=3600
+)
+
+FeatureSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=feature_engine
+)
+
+def get_feature_db():
+    db = FeatureSessionLocal()
     try:
         yield db
     finally:

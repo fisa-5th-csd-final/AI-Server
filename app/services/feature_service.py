@@ -273,10 +273,6 @@ def build_user_features(user_id: int, db: Session):
     debt_to_income_ratio = remaining_principal_mean / (income + 1e-6)
     loan_usage_ratio = len(loans) / 5.0
 
-    # delinquency
-    is_delinquent_any = int(any(l.repayment_status.value == "OVERDUE" for l in loans))
-
-
     # -----------------------------------------------------
     # 최종 Feature dict (65개 완성)
     # -----------------------------------------------------

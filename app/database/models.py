@@ -21,6 +21,10 @@ class BaseEntity:
 # ENUM 매핑
 # ============================================================
 
+class SexEnum(enum.Enum):
+    MALE = 0
+    FEMALE = 1
+
 class CreditRatingEnum(enum.Enum):
     AAA = "AAA"
     AA = "AA"
@@ -86,9 +90,10 @@ class InterestTypeEnum(enum.Enum):
 
 class User(Base, BaseEntity):
     __tablename__ = "user"
-
+    
     user_id = Column(BigInteger, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
+    sex_cd = Column(Enum(SexEnum), nullable=False)
     address = Column(String(200), nullable=False)
     birthday = Column(DateTime, nullable=False)
     job = Column(String(50), nullable=False)
@@ -96,7 +101,6 @@ class User(Base, BaseEntity):
     credit_level = Column(Enum(CreditRatingEnum), nullable=False)
     customer_level = Column(Enum(CustomerLevelEnum), nullable=False)
 
-    user_auth = relationship("UserAuth", back_populates="user")
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
 
