@@ -11,9 +11,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-# --------------------------------------------------------
-# 최신 Feature 가져오기 (59개 명시 SELECT)
-# --------------------------------------------------------
+# 최신 Feature 가져오기
 def load_latest_features(db: Session, user_id: int):
 
     query = text("""
@@ -91,25 +89,25 @@ def load_latest_features(db: Session, user_id: int):
     return dict(row)
 
 
-
-# --------------------------------------------------------
 # 변화 적용
-# --------------------------------------------------------
 def apply_changes_to_features(features: dict, changes):
+    if not changes:
+        return features
+
     income_delta = sum(c.amount for c in changes if c.type == "income")
     expense_delta = sum(c.amount for c in changes if c.type == "expense")
 
     # 소비 증가 반영
     features["TOT_USE_AM_mean"] = float(features["TOT_USE_AM_mean"]) + float(expense_delta)
 
-    # 소비 증가 → spend_growth_last 영향
+    # spend_growth_last 업데이트
     salary_mean = float(features["salary_mean"])
     features["spend_growth_last"] = features["TOT_USE_AM_mean"] / (salary_mean + 1e-6)
 
     # 잔액 변화 반영
     features["balance_mean"] = float(features["balance_mean"]) + float(income_delta) - float(expense_delta)
 
-    # 비율 계산
+    # 비율 재계산
     remaining = float(features["remaining_principal_mean"])
     new_income = salary_mean + float(income_delta)
 
@@ -119,10 +117,7 @@ def apply_changes_to_features(features: dict, changes):
     return features
 
 
-
-# --------------------------------------------------------
-# 시뮬레이션 API (predict.py와 동일한 구조)
-# --------------------------------------------------------
+# 시뮬레이션 API
 @router.post("/simulation", response_model=SimulationResponse)
 def run_simulation(
     request: SimulationRequest,
@@ -131,30 +126,32 @@ def run_simulation(
     try:
         # 최신 feature 로드
         base_features = load_latest_features(db, request.user_id)
-
-        # numeric 변환
         base_features = {k: float(v) for k, v in base_features.items()}
 
-        # 기존 위험도
+        # 기본 위험도 계산
         base_pred = predict_risk(base_features)
         base_score = base_pred["delinquency_probability"]
 
-        # 변화 적용
-        updated_features = base_features.copy()
-        updated_features = apply_changes_to_features(updated_features, request.changes)
+        # 변경사항이 없다면 → 기본 위험도 그대로 반환
+        if not request.changes or len(request.changes) == 0:
+            return SimulationResponse(
+                base_risk_score=round(base_score, 4),
+                simulated_risk_score=round(base_score, 4),
+                delta=0.0,
+                explanation="현재 재무 상태를 기준으로 계산한 기본 위험도입니다."
+            )
 
-        # 시뮬레이션 위험도 재계산
+        # 변화 적용 후 재계산
+        updated_features = apply_changes_to_features(base_features.copy(), request.changes)
         sim_pred = predict_risk(updated_features)
         sim_score = sim_pred["delinquency_probability"]
 
-        # 증감률 계산
+        # Delta 계산
         if base_score != 0:
-            delta = ((sim_score - base_score) / base_score) * 100
+            delta = round(((sim_score - base_score) / base_score) * 100, 2)
         else:
-            # base_score가 0이면 비율 계산 불가 → 절대 변화량 사용
-            delta = sim_score * 100  
+            delta = round(sim_score * 100, 2)
 
-        delta = round(delta, 2)
         explanation = f"수입/지출 변화로 위험도가 {delta:+.2f}% 변했습니다."
 
         return SimulationResponse(
