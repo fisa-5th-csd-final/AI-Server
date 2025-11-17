@@ -10,7 +10,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def get_latest_features(db: Session, user_id: str):
+def get_latest_features(db: Session, user_id: int):
     query = text("""
         SELECT
             TOT_USE_AM_mean,
@@ -82,7 +82,7 @@ def get_latest_features(db: Session, user_id: str):
 
 
 @router.get("/predict/{user_id}", response_model=PredictResponse)
-def predict(user_id: str):
+def predict(user_id: int):
     try:
         db = FeatureSessionLocal()
 
