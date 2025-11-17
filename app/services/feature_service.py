@@ -5,9 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.database.models import (
     User, Account, AccountTransaction, CardTransaction,
-    LoanLedger, LoanProduct, InterestRate
+    LoanLedger
 )
-
 
 # ===============================
 # Helper Functions
@@ -24,10 +23,24 @@ def safe_last(values):
 
 
 # ===============================
-# 메인 Feature 생성 함수
+# loan_ledger_id 기반 Feature 생성
 # ===============================
 
-def build_user_features(user_id: int, db: Session):
+def build_loan_features(loan_ledger_id: int, db: Session):
+
+    # -----------------------------------------------------
+    # LoanLedger 1개 가져오기 (대출 단건)
+    # -----------------------------------------------------
+    loan = (
+        db.query(LoanLedger)
+        .filter(LoanLedger.loan_ledger_id == loan_ledger_id)
+        .first()
+    )
+
+    if not loan:
+        raise Exception("LoanLedger not found")
+
+    user_id = loan.user_id
 
     # -----------------------------------------------------
     # User 정보
@@ -37,28 +50,28 @@ def build_user_features(user_id: int, db: Session):
         raise Exception("User not found")
 
     age = (datetime.utcnow() - user.birthday).days // 365
-
     SEX_CD = getattr(user, "sex_cd", 0)
     MBR_RK = getattr(user, "customer_level", 0)
-    income = user.income
+    income = float(user.income)
 
 
     # -----------------------------------------------------
     # Account + AccountTransaction + CardTransaction
     # -----------------------------------------------------
     accounts = db.query(Account).filter(Account.user_id == user_id).all()
-    account_ids = [acc.account_id for acc in accounts]
+    account_ids = [a.account_id for a in accounts]
 
-    trx_acc = db.query(AccountTransaction)\
-        .filter(AccountTransaction.account_id.in_(account_ids)).all()
+    trx_acc = db.query(AccountTransaction).filter(
+        AccountTransaction.account_id.in_(account_ids)
+    ).all()
 
-    trx_card = db.query(CardTransaction)\
-        .filter(CardTransaction.account_id.in_(account_ids)).all()
+    trx_card = db.query(CardTransaction).filter(
+        CardTransaction.account_id.in_(account_ids)
+    ).all()
 
     df_acc = pd.DataFrame([{
         "amount": float(t.amount),
         "is_income": t.is_income,
-        "type": t.type.value,
         "created_at": pd.to_datetime(t.created_at)
     } for t in trx_acc]) if trx_acc else pd.DataFrame()
 
@@ -68,10 +81,7 @@ def build_user_features(user_id: int, db: Session):
         "created_at": pd.to_datetime(t.created_at)
     } for t in trx_card]) if trx_card else pd.DataFrame()
 
-
-    # -----------------------------------------------------
-    # 월 단위 grouping
-    # -----------------------------------------------------
+    # month grouping
     if len(df_acc) > 0:
         df_acc["month"] = df_acc["created_at"].dt.to_period("M")
     if len(df_card) > 0:
@@ -81,10 +91,7 @@ def build_user_features(user_id: int, db: Session):
     # -----------------------------------------------------
     # TOT_USE_AM
     # -----------------------------------------------------
-    if len(df_acc) > 0:
-        total_use = df_acc[df_acc["is_income"] == False]["amount"]
-    else:
-        total_use = []
+    total_use = df_acc[df_acc["is_income"] == False]["amount"] if len(df_acc) else []
 
     TOT_USE_AM_mean = safe_mean(total_use)
     TOT_USE_AM_max = max(total_use) if len(total_use) else 0
@@ -96,6 +103,7 @@ def build_user_features(user_id: int, db: Session):
     # 카드 금액
     # -----------------------------------------------------
     crd = df_card["amount"] if len(df_card) else []
+
     CRDSL_USE_AM_mean = safe_mean(crd)
     CRDSL_USE_AM_std = safe_std(crd)
 
@@ -104,14 +112,14 @@ def build_user_features(user_id: int, db: Session):
     # 출금
     # -----------------------------------------------------
     cnf = df_acc[df_acc["is_income"] == False]["amount"] if len(df_acc) else []
+
     CNF_USE_AM_mean = safe_mean(cnf)
     CNF_USE_AM_std = safe_std(cnf)
 
 
     # -----------------------------------------------------
-    # 월별 credit/check ratio + std + last
+    # 월별 credit/check ratio
     # -----------------------------------------------------
-    # 월별 카드 + 출금 합계 생성
     card_month = df_card.groupby("month")["amount"].sum() if len(df_card) else pd.Series([])
     acc_withdraw_month = df_acc[df_acc["is_income"] == False].groupby("month")["amount"].sum() if len(df_acc) else pd.Series([])
 
@@ -137,15 +145,14 @@ def build_user_features(user_id: int, db: Session):
 
 
     # -----------------------------------------------------
-    # 월별 소비 성장(growth) / 가속도(accel)
+    # 소비 growth/accel
     # -----------------------------------------------------
     if len(df_acc) > 0:
         monthly = df_acc.groupby("month")["amount"].sum()
         growth = monthly.pct_change().fillna(0)
         accel = growth.diff().fillna(0)
     else:
-        growth = []
-        accel = []
+        growth, accel = [], []
 
     spend_growth_mean = safe_mean(growth)
     spend_growth_std = safe_std(growth)
@@ -157,37 +164,32 @@ def build_user_features(user_id: int, db: Session):
 
 
     # -----------------------------------------------------
-    # top3_ratio_sum + trend (월 단위)
+    # top3 category ratio + trend
     # -----------------------------------------------------
     if len(df_card) > 0:
         df_cat = df_card.copy()
         df_cat["count"] = 1
         monthly_cat = df_cat.groupby(["month", "category"])["count"].sum()
 
-        # month → 카테고리 비율
+        months_sorted = sorted(set(df_cat["month"]))
+
         top3_ratio_sum_list = []
         top3_ratio_trend_list = []
 
-        months_sorted = sorted(set(df_cat["month"]))
-
         for m in months_sorted:
-            cat_counts = monthly_cat[m] if m in monthly_cat.index.levels[0] else pd.Series([])
-            if len(cat_counts) == 0:
+            if m not in monthly_cat.index.levels[0]:
                 top3_ratio_sum_list.append(0)
-                top3_ratio_trend_list.append(0)
                 continue
 
+            cat_counts = monthly_cat[m]
             pct = cat_counts / cat_counts.sum()
             top3 = pct.sort_values(ascending=False)[:3].sum()
             top3_ratio_sum_list.append(float(top3))
 
-        # trend = diff of top3 ratio
         for i in range(len(top3_ratio_sum_list)):
-            if i == 0:
-                top3_ratio_trend_list.append(0)
-            else:
-                diff = top3_ratio_sum_list[i] - top3_ratio_sum_list[i-1]
-                top3_ratio_trend_list.append(float(diff))
+            top3_ratio_trend_list.append(
+                0 if i == 0 else top3_ratio_sum_list[i] - top3_ratio_sum_list[i-1]
+            )
 
         top3_ratio_sum_mean = safe_mean(top3_ratio_sum_list)
         top3_ratio_sum_std = safe_std(top3_ratio_sum_list)
@@ -203,36 +205,28 @@ def build_user_features(user_id: int, db: Session):
 
 
     # -----------------------------------------------------
-    # spending_entropy
+    # spending entropy
     # -----------------------------------------------------
     if len(df_card) > 0:
         months = sorted(df_card["month"].unique())
         entropy_list = []
-
         for m in months:
-            month_df = df_card[df_card["month"] == m]
-            pct = month_df["category"].value_counts(normalize=True)
-            ent = -(pct * np.log(pct)).sum()
-            entropy_list.append(float(ent))
+            pct = df_card[df_card["month"] == m]["category"].value_counts(normalize=True)
+            entropy = -(pct * np.log(pct)).sum()
+            entropy_list.append(float(entropy))
 
         spending_entropy_mean = safe_mean(entropy_list)
         spending_entropy_std = safe_std(entropy_list)
         spending_entropy_last = safe_last(entropy_list)
-
     else:
         spending_entropy_mean = spending_entropy_std = spending_entropy_last = 0
 
 
     # -----------------------------------------------------
-    # salary_* (급여) → 현재 DB에서 분리 불가 → 0
+    # Account balance Feature
     # -----------------------------------------------------
-    salary_mean = salary_max = salary_min = salary_std = 0
+    balances = [float(a.balance) for a in accounts]
 
-
-    # -----------------------------------------------------
-    # Account 잔액
-    # -----------------------------------------------------
-    balances = [float(a.balance) for a in accounts] if accounts else []
     balance_mean = safe_mean(balances)
     balance_max = max(balances) if balances else 0
     balance_min = min(balances) if balances else 0
@@ -240,43 +234,42 @@ def build_user_features(user_id: int, db: Session):
 
 
     # -----------------------------------------------------
-    # LoanLedger Feature
+    # LoanLedger Feature (loan 단건)
     # -----------------------------------------------------
-    loans = db.query(LoanLedger).filter(LoanLedger.user_id == user_id).all()
-    principal_vals = [float(l.principal) for l in loans]
-    remaining_vals = [float(l.remain_principal) for l in loans]
-    interest_vals = [float(l.completed_interest) for l in loans]
+    principal = float(loan.principal)
+    remaining = float(loan.remain_principal)
+    interest_completed = float(loan.completed_interest)
 
-    principal_amount_mean = safe_mean(principal_vals)
-    principal_amount_max = max(principal_vals) if principal_vals else 0
-    principal_amount_min = min(principal_vals) if principal_vals else 0
-    principal_amount_std = safe_std(principal_vals)
+    principal_amount_mean = principal_amount_max = principal_amount_min = principal
+    principal_amount_std = 0
 
-    remaining_principal_mean = safe_mean(remaining_vals)
-    remaining_principal_max = max(remaining_vals) if remaining_vals else 0
-    remaining_principal_min = min(remaining_vals) if remaining_vals else 0
-    remaining_principal_std = safe_std(remaining_vals)
+    remaining_principal_mean = remaining_principal_max = remaining_principal_min = remaining
+    remaining_principal_std = 0
 
-    interest_rate_mean = safe_mean(interest_vals)
-    interest_rate_max = max(interest_vals) if interest_vals else 0
-    interest_rate_min = min(interest_vals) if interest_vals else 0
-    interest_rate_std = safe_std(interest_vals)
+    interest_rate_mean = interest_rate_max = interest_rate_min = interest_completed
+    interest_rate_std = 0
 
-    repayment_ratio_mean = (principal_amount_mean - remaining_principal_mean) / (principal_amount_mean + 1e-6)
+    repayment_ratio_mean = (principal - remaining) / (principal + 1e-6)
 
-    loan_type_mean = np.mean([1 if l.repayment_type.value == "BULLET" else 0 for l in loans]) if loans else 0
-    is_completed_mean = np.mean([1 if l.repayment_status.value == "COMPLETED" else 0 for l in loans]) if loans else 0
+    loan_type_mean = 1 if loan.repayment_type.value == "BULLET" else 0
+    is_completed_mean = 1 if loan.repayment_status.value == "COMPLETED" else 0
 
-    # ratios
-    balance_to_loan_ratio = balance_mean / (remaining_principal_mean + 1e-6)
-    income_to_loan_ratio = income / (remaining_principal_mean + 1e-6)
-    debt_to_income_ratio = remaining_principal_mean / (income + 1e-6)
-    loan_usage_ratio = len(loans) / 5.0
+    balance_to_loan_ratio = balance_mean / (remaining + 1e-6)
+    income_to_loan_ratio = income / (remaining + 1e-6)
+    debt_to_income_ratio = remaining / (income + 1e-6)
+
+    # user의 전체 대출 수
+    user_loan_count = db.query(LoanLedger).filter(LoanLedger.user_id == user_id).count()
+    loan_usage_ratio = user_loan_count / 5.0
+
 
     # -----------------------------------------------------
-    # 최종 Feature dict (65개 완성)
+    # 최종 Feature dict (65개)
     # -----------------------------------------------------
     return {
+        "loan_ledger_id": loan_ledger_id,
+        "user_id": user_id,
+
         "TOT_USE_AM_mean": TOT_USE_AM_mean,
         "TOT_USE_AM_max": TOT_USE_AM_max,
         "TOT_USE_AM_min": TOT_USE_AM_min,
@@ -320,10 +313,10 @@ def build_user_features(user_id: int, db: Session):
         "SEX_CD": SEX_CD,
         "MBR_RK": MBR_RK,
 
-        "salary_mean": salary_mean,
-        "salary_max": salary_max,
-        "salary_min": salary_min,
-        "salary_std": salary_std,
+        "salary_mean": 0,
+        "salary_max": 0,
+        "salary_min": 0,
+        "salary_std": 0,
 
         "balance_mean": balance_mean,
         "balance_max": balance_max,
