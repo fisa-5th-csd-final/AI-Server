@@ -10,7 +10,10 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def get_latest_features(db: Session, user_id: int):
+# -----------------------------------------
+# 최신 Loan Feature 조회 함수
+# -----------------------------------------
+def get_latest_features(db: Session, loan_ledger_id: int):
     query = text("""
         SELECT
             TOT_USE_AM_mean,
@@ -72,28 +75,36 @@ def get_latest_features(db: Session, user_id: int):
             income_to_loan_ratio,
             debt_to_income_ratio,
             loan_usage_ratio
-        FROM user_features
-        WHERE user_id = :user_id
+        FROM loan_features
+        WHERE loan_ledger_id = :loan_ledger_id
         ORDER BY created_at DESC
         LIMIT 1
     """)
-    result = db.execute(query, {"user_id": user_id}).mappings().first()
+
+    result = db.execute(
+        query,
+        {"loan_ledger_id": loan_ledger_id}
+    ).mappings().first()
+
     return dict(result) if result else None
 
 
-@router.get("/predict/{user_id}", response_model=PredictResponse)
-def predict(user_id: int):
+# -----------------------------------------
+# API: Loan 단건 예측
+# -----------------------------------------
+@router.get("/predict/{loan_ledger_id}", response_model=PredictResponse)
+def predict(loan_ledger_id: int):
     try:
         db = FeatureSessionLocal()
 
         # 최신 Feature 가져오기
-        features = get_latest_features(db, user_id)
+        features = get_latest_features(db, loan_ledger_id)
         if features is None:
-            raise HTTPException(404, "해당 사용자의 Feature 데이터가 없습니다.")
+            raise HTTPException(404, "해당 대출의 Feature 데이터가 없습니다.")
 
-        # 모델 입력에서 제외해야 하는 컬럼
-        features.pop("user_id", None)
-        features.pop("feature_date", None)
+        # 예측에 필요 없는 컬럼 제거
+        features.pop("loan_ledger_id", None)
+        features.pop("created_at", None)
 
         # 모델 예측
         result = predict_risk(features)
