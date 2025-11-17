@@ -67,7 +67,7 @@ class LoanTypeEnum(enum.Enum):
     
 
 class RepaymentTypeEnum(enum.Enum):
-    EQUAL_INSTALLMENT = "EQUAL_PAYMENT"   # 원리금균등
+    EQUAL_INSTALLMENT = "EQUAL_INSTALLMENT"   # 원리금균등
     EQUAL_PRINCIPAL = "EQUAL_PRINCIPAL"   # 원금균등
     BULLET = "BULLET"                     # 만기일시
 
@@ -85,21 +85,22 @@ class InterestTypeEnum(enum.Enum):
 
 
 # ======================================================
-# LoanLedger
+# User
 # ======================================================
 
 class User(Base, BaseEntity):
     __tablename__ = "user"
     
     user_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
-    sex_cd = Column(Enum(SexEnum), nullable=False)
-    address = Column(String(200), nullable=False)
+    name = Column(String(255), nullable=False)
+    # sex_cd = Column(Enum(SexEnum), nullable=False)
+    address = Column(String(255), nullable=False)
     birthday = Column(DateTime, nullable=False)
-    job = Column(String(50), nullable=False)
-    income = Column(BigInteger, nullable=False)
+    job = Column(String(255), nullable=False)
+    income = Column(Numeric(38, 2), nullable=False)
     credit_level = Column(Enum(CreditRatingEnum), nullable=False)
     customer_level = Column(Enum(CustomerLevelEnum), nullable=False)
+    # user_auth_login_id = Column(String(255), unique=True, nullable=True)
 
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
@@ -113,12 +114,10 @@ class Account(Base, BaseEntity):
     __tablename__ = "account"
     
     account_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    account_number = Column(String(50), unique=True, nullable=False)
-    user_id = Column(String(50), ForeignKey("User.user_id"), nullable=False)
-    balance = Column(Numeric(precision=18, scale=2), nullable=False, default=0)
+    account_number = Column(String(255), unique=True, nullable=False)
+    user_id = Column(BigInteger, ForeignKey("User.user_id"), nullable=False)
+    balance = Column(Numeric(38, 2), nullable=False, default=0)
     bank_code = Column(String(3), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
 
     account_transactions = relationship(
         "AccountTransaction",
@@ -140,19 +139,18 @@ class Account(Base, BaseEntity):
 class AccountTransaction(Base, BaseEntity):
     __tablename__ = "transaction_account"
 
-    trx_a_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    trxaid = Column(BigInteger, primary_key=True, autoincrement=True)
     account_id = Column(
         BigInteger,
         ForeignKey("account.account_id"),
         nullable=False
     )
     type = Column(Enum(TransactionTypeEnum), nullable=False)
-    amount = Column(Numeric(18, 2), nullable=False)
-    balance_before = Column(Numeric(18, 2), nullable=False)
-    balance_after = Column(Numeric(18, 2), nullable=False)
+    amount = Column(Numeric(38, 2), nullable=False)
+    balance_before = Column(Numeric(38, 2), nullable=False)
+    balance_after = Column(Numeric(38, 2), nullable=False)
     destination_account = Column(String(20), nullable=True)
     is_income = Column(Boolean, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(datetime.timezone.gmt))
     account = relationship("Account", back_populates="account_transactions")
 
 
@@ -163,16 +161,15 @@ class AccountTransaction(Base, BaseEntity):
 class CardTransaction(Base, BaseEntity):
     __tablename__ = "transaction_card"
 
-    trx_c_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    trxcid = Column(BigInteger, primary_key=True, autoincrement=True)
     account_id = Column(
         BigInteger,
         ForeignKey("account.account_id"),
         nullable=False
     )
-    amount = Column(Numeric(18, 2), nullable=False)
-    store_name = Column(String(50))
+    amount = Column(Numeric(38, 2), nullable=False)
+    store_name = Column(String(50), nullable=True)
     category = Column(Enum(ConsumptionCategoryEnum))
-    created_at = Column(DateTime, default=datetime.now(datetime.timezone.gmt))
 
     account = relationship("Account", back_populates="card_transactions")
 
@@ -189,9 +186,9 @@ class InterestRate(Base, BaseEntity):
         ForeignKey("loan_product.loan_product_id"),
         nullable=False
     )
-    base_interest = Column(Numeric(10, 4), nullable=False)
-    add_interest = Column(Numeric(10, 4), nullable=False)
-    limit_prefer_interest = Column(Numeric(10, 4), nullable=False)
+    base_interest = Column(Numeric(38, 2), nullable=False)
+    add_interest = Column(Numeric(38, 2), nullable=False)
+    limit_prefer_interest = Column(Numeric(38, 2), nullable=False)
 
     loan_product = relationship("LoanProduct", back_populates="interest_rates")
 
@@ -203,7 +200,7 @@ class LoanProduct(Base, BaseEntity):
     __tablename__ = "loan_product"
 
     loan_product_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
+    name = Column(String(255), nullable=False)
     type = Column(Enum(LoanTypeEnum), nullable=False)
 
     loan_ledgers = relationship("LoanLedger", back_populates="loan_product")
@@ -221,32 +218,25 @@ class LoanLedger(Base, BaseEntity):
     __tablename__ = "loan_ledger"
 
     loan_ledger_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    loan_product_id = Column(
-        BigInteger,
-        ForeignKey("loan_product.loan_product_id"),
-        nullable=False
-    )
-    user_id = Column(
-        String(50),
-        ForeignKey("User.user_id"),
-        nullable=False
-    )
-    completed_interest = Column(Numeric(18, 4), nullable=False)
-    principal = Column(Numeric(18, 2), nullable=False)
-    remain_principal = Column(Numeric(18, 2), nullable=False)
+    loan_product_id = Column(BigInteger, ForeignKey("loan_product.loan_product_id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("User.user_id"), nullable=False)
+    completed_interest = Column(Numeric(38, 2), nullable=False)
+    principal = Column(Numeric(38, 2), nullable=False)
+    remain_principal = Column(Numeric(38, 2), nullable=False)
     repayment_type = Column(Enum(RepaymentTypeEnum), nullable=False)
     repayment_status = Column(Enum(RepaymentStatusEnum), nullable=False)
     interest_type = Column(Enum(InterestTypeEnum), nullable=False)
-    early_repay_interest_rate = Column(Numeric(10, 4), nullable=False)
+    early_repay_interest_rate = Column(Numeric(38, 2), nullable=False)
     next_repayment_date = Column(DateTime)
     last_repayment_date = Column(DateTime)
     loan_end_date = Column(DateTime, nullable=False)
-    overdue_count = Column(BigInteger, nullable=False)
-    term = Column(BigInteger, nullable=False)
+    overdue_count = Column(Integer, nullable=False)
+    term = Column(Integer, nullable=False)
     account_id = Column(
         BigInteger,
         ForeignKey("account.account_id"),
-        nullable=True
+        nullable=True,
+        unique=True
     )
 
     loan_product = relationship("LoanProduct", back_populates="loan_ledgers")
