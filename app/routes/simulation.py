@@ -147,8 +147,15 @@ def run_simulation(
         sim_pred = predict_risk(updated_features)
         sim_score = sim_pred["delinquency_probability"]
 
-        delta = round(sim_score - base_score, 4)
-        explanation = f"수입/지출 변화로 위험도가 {delta:+.4f} 만큼 변했습니다."
+        # 증감률 계산
+        if base_score != 0:
+            delta = ((sim_score - base_score) / base_score) * 100
+        else:
+            # base_score가 0이면 비율 계산 불가 → 절대 변화량 사용
+            delta = sim_score * 100  
+
+        delta = round(delta, 2)
+        explanation = f"수입/지출 변화로 위험도가 {delta:+.2f}% 변했습니다."
 
         return SimulationResponse(
             base_risk_score=round(base_score, 4),
