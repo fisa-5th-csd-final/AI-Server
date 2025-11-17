@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from pydantic import BaseModel, Field
+
 from app.database.connection import FeatureSessionLocal
 from app.schemas.predict_schema import PredictResponse
 from app.services.model_service import predict_risk
@@ -9,7 +11,17 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+# -------------------------------
+# Request Body 모델
+# -------------------------------
+class LoanPredictRequest(BaseModel):
+    loan_ledger_id: int = Field(..., description="예측할 대출 원장의 ID")
+
+
+# -------------------------------
 # 최신 Loan Feature 조회 함수
+# -------------------------------
 def get_latest_features(db: Session, loan_ledger_id: int):
     query = text("""
         SELECT
@@ -85,10 +97,16 @@ def get_latest_features(db: Session, loan_ledger_id: int):
 
     return dict(result) if result else None
 
-@router.get("/predict/{loan_ledger_id}", response_model=PredictResponse)
-def predict(loan_ledger_id: int):
+
+# -------------------------------
+# POST /predict
+# -------------------------------
+@router.post("/predict", response_model=PredictResponse)
+def predict(request: LoanPredictRequest):
     try:
         db = FeatureSessionLocal()
+
+        loan_ledger_id = request.loan_ledger_id
 
         # 최신 Feature 가져오기
         features = get_latest_features(db, loan_ledger_id)
