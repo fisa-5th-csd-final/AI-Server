@@ -1,30 +1,58 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, Field, condecimal
+from typing import Dict, Optional
 from decimal import Decimal
 
-class SpendingData(BaseModel):
-    interior_am: Optional[Decimal] = Field(None, description="인테리어 관련 지출 금액")
-    insuhos_am: Optional[Decimal] = Field(None, description="보험/병원 관련 지출 금액")
-    offedu_am: Optional[Decimal] = Field(None, description="오프라인 교육 관련 지출 금액")
-    trvlec_am: Optional[Decimal] = Field(None, description="여행/레저 관련 지출 금액")
-    fsbz_am: Optional[Decimal] = Field(None, description="식비 관련 지출 금액")
-    svcarc_am: Optional[Decimal] = Field(None, description="서비스/자동차 관련 지출 금액")
-    plsanit_am: Optional[Decimal] = Field(None, description="생활용품/위생 관련 지출 금액")
-    clothgds_am: Optional[Decimal] = Field(None, description="의류/패션 관련 지출 금액")
-    auto_am: Optional[Decimal] = Field(None, description="자동차 관련 지출 금액")
-    income: Optional[Decimal] = Field(None, description="월 소득 금액")
+# 소수점 1자리로 고정된 비율 타입
+RatioDecimal = condecimal(max_digits=4, decimal_places=1)   # 예: 0.0 ~ 9.9까지 표현
 
 
-class RecommendRequest(BaseModel):
-    spending_data: SpendingData = Field(
+# ----------------------------------------------
+# 사용자의 실제 소비 비율
+# ----------------------------------------------
+class SpendingRatio(BaseModel):
+    categories: Dict[str, RatioDecimal] = Field(
         ...,
-        description="사용자의 소비 데이터 (각 항목별 금액 포함)"
+        description="사용자의 실제 소비 비율 (예: {'FOOD': 0.3, 'TRAVEL': 0.1})"
     )
-    avg_spending_data: Optional[SpendingData] = Field(
-        ..., 
-        description="평균 소비 데이터 (비교용)"
+    income: Optional[Decimal] = Field(
+        None,
+        description="사용자 월 소득 (원 단위). 비율 기반이므로 선택값"
     )
 
 
+# ----------------------------------------------
+# 사용자가 직접 설정한 한도 비율
+# ----------------------------------------------
+class UserLimitRatio(BaseModel):
+    limits: Dict[str, RatioDecimal] = Field(
+        ...,
+        description="사용자가 설정한 카테고리별 소비 한도 비율 (예: {'FOOD': 0.2})"
+    )
+
+
+# ----------------------------------------------
+# 요청 스키마
+# ----------------------------------------------
+class RecommendRequest(BaseModel):
+    spending_ratio: SpendingRatio = Field(
+        ...,
+        description="사용자의 실제 소비 비율"
+    )
+    age_group_ratio: Dict[str, RatioDecimal] = Field(
+        ...,
+        description="해당 연령대의 바른 소비 비율 (예: {'FOOD': 0.2})"
+    )
+    user_limit_ratio: UserLimitRatio = Field(
+        ...,
+        description="사용자 설정 소비 한도 비율"
+    )
+
+
+# ----------------------------------------------
+# 응답 스키마
+# ----------------------------------------------
 class RecommendResponse(BaseModel):
-    comment: str = Field(..., description="AI의 코멘트")
+    comment: str = Field(
+        ...,
+        description="AI가 생성한 소비 패턴 분석 코멘트"
+    )
