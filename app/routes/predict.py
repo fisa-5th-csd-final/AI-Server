@@ -9,10 +9,7 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-
-# -----------------------------------------
 # 최신 Loan Feature 조회 함수
-# -----------------------------------------
 def get_latest_features(db: Session, loan_ledger_id: int):
     query = text("""
         SELECT
@@ -88,10 +85,6 @@ def get_latest_features(db: Session, loan_ledger_id: int):
 
     return dict(result) if result else None
 
-
-# -----------------------------------------
-# API: Loan 단건 예측
-# -----------------------------------------
 @router.get("/predict/{loan_ledger_id}", response_model=PredictResponse)
 def predict(loan_ledger_id: int):
     try:
