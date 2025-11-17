@@ -1,115 +1,131 @@
 from app.services.llm_loader import safe_generate
+from decimal import Decimal
 
 def generate_spending_comment(
-    spending_data: dict,
-    avg_spending_data: dict,
-    peer_age: str = "20대 후반"
+    spending_ratio: dict,
+    age_group_ratio: dict,
+    user_limit_ratio: dict,
+    income: float = None,
 ) -> str:
-    """
-    사용자 소비 데이터를 또래 평균 소비 데이터와 비교하여 코멘트를 생성합니다.
-    예: '20대 후반 소비자 평균보다 식비를 12% 더 많이 쓰셨습니다.'
-    """
 
-    # 수입 및 소비 항목 분리
-    salary = spending_data.get("income", 0)
-    spending = {k: v for k, v in spending_data.items() if k != "income"}
-    peer_spending = avg_spending_data or {}
+    # Decimal → float 변환
+    def to_float_map(data):
+        return {k: float(v) if isinstance(v, Decimal) else float(v) for k, v in data.items()}
 
-    total_spend = sum(spending.values())
-    ratio = round(total_spend / salary, 2) if salary else 0
+    spending = to_float_map(spending_ratio)
+    age_norm = to_float_map(age_group_ratio)
+    limit = to_float_map(user_limit_ratio)
 
-    # 전체 소비 비교
-    peer_total = sum(peer_spending.values()) if peer_spending else 0
-    peer_info = ""
-    if peer_total > 0:
-        diff = total_spend - peer_total
-        pct_diff = (diff / peer_total * 100)
-        peer_info = f"또래 평균 대비 {abs(pct_diff):.1f}% {'많이' if pct_diff > 0 else '적게'} 소비"
+    # 연령대 대비 차이 계산
+    age_diff = {}
+    for cat, user_v in spending.items():
+        base_v = age_norm.get(cat, 0)
+        if base_v > 0:
+            pct = (user_v - base_v) / base_v * 100
+            age_diff[cat] = pct
 
-    # 카테고리별 비교
-    category_diffs = {}
-    for cat, val in spending.items():
-        peer_val = peer_spending.get(cat, 0)
-        if peer_val > 0:
-            pct = (val - peer_val) / peer_val * 100
-            category_diffs[cat] = pct
+    top_age_cat = max(age_diff, key=lambda k: abs(age_diff[k])) if age_diff else None
+    top_age_val = age_diff.get(top_age_cat, 0) if top_age_cat else 0
 
-    if category_diffs:
-        top_diff_cat = max(category_diffs, key=lambda k: abs(category_diffs[k]))
-        top_diff_val = category_diffs[top_diff_cat]
-        peer_summary = f"{top_diff_cat} 항목에서 또래보다 {abs(top_diff_val):.1f}% {'많이' if top_diff_val > 0 else '적게'} 사용"
-    else:
-        peer_summary = "카테고리 비교 정보 없음"
+    # 한도 대비 차이 계산
+    limit_diff = {}
+    for cat, user_v in spending.items():
+        limit_v = limit.get(cat)
+        if limit_v is not None and limit_v > 0:
+            pct = (user_v - limit_v) / limit_v * 100
+            limit_diff[cat] = pct
 
-    # 가장 지출 많은 항목
-    top_category = max(spending, key=spending.get)
-    top_amount = spending[top_category]
+    top_limit_cat = max(limit_diff, key=lambda k: abs(limit_diff[k])) if limit_diff else None
+    top_limit_val = limit_diff.get(top_limit_cat, 0) if top_limit_cat else 0
 
+    # -------------------------
     # LLM 프롬프트
+    # -------------------------
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a financial advisor for a Korean personal finance app. "
-                "Write short, polite, and natural comments in Korean (~습니다 style). "
-                "Summarize how the user's spending compares to their peer group. "
-                "Avoid redundant connectors like '즉', '따라서', '결과적으로'. "
-                "Keep the tone factual, clear, and concise — similar to a banking app insight."
-            ),
+                "You are a Korean financial insight generator. "
+                "Always respond in Korean using the polite '~습니다' tone. "
+                "You MUST follow one of these templates:\n\n"
+                "1) \"{A_list}에서 지출이 기준보다 높고, {B_list}에서도 높습니다.\"\n"
+                "2) \"{A_list}에서 지출이 기준보다 낮고, {B_list}에서도 낮습니다.\"\n"
+                "3) \"{A_list}에서 지출이 기준보다 높고, {B_list}에서는 낮습니다.\"\n\n"
+                "Rules:\n"
+                "- DO NOT output any numbers.\n"
+                "- DO NOT output lists, bullet points, or raw data.\n"
+                "- Only produce ONE sentence.\n"
+                "- Fill A_list with age-group deviations (>=5%).\n"
+                "- Fill B_list with user-limit deviations (>=5%)."
+            )
         },
         {
             "role": "user",
             "content": (
-                f"[User Info]\n"
-                f"- Monthly Income: {salary:,.0f}원\n"
-                f"- Total Spending: {total_spend:,.0f}원 ({ratio*100:.1f}% of income)\n"
-                f"- Top Spending Category: {top_category} ({top_amount:,.0f}원)\n"
-                f"- Peer Group: {peer_age}\n"
-                f"- Peer Comparison: {peer_info or '정보 없음'}\n"
-                f"- Key Peer Category: {peer_summary or '정보 없음'}\n\n"
-                "[User Category Breakdown]\n" +
-                "\n".join([f"- {cat}: {val:,.0f}원" for cat, val in spending.items()]) +
-                ("\n\n[Peer Average Spending]\n" + "\n".join(
-                    [f"- {cat}: {val:,.0f}원" for cat, val in peer_spending.items()]
-                ) if peer_spending else "") +
-                "\n\nOutput Rules:\n"
-                "1. Respond only in Korean.\n"
-                "2. Write 1–2 sentences.\n"
-                "3. Always include the peer group in the sentence (예: '20대 후반, 월 300~400만 원대 소비자 평균보다...').\n"
-                "4. Mention categories that stand out (높거나 낮은 항목).\n"
-                "5. Use a polite and factual tone (~습니다 style).\n"
-                "6. Avoid '즉', '따라서', '결과적으로'.\n\n"
-                "Example outputs:\n"
-                "- 20대 후반 소비자 평균과 비슷한 수준입니다.\n"
-                "- 20대 후반 평균보다 식비가 10% 높으며, 교통비는 평균보다 낮습니다.\n\n"
-                "Answer:"
+                f"The category with the largest age-group difference is {top_age_cat} "
+                f"with {top_age_val:+.1f}%. "
+                f"The category with the largest limit difference is {top_limit_cat} "
+                f"with {top_limit_val:+.1f}%. "
+                "Based on this, generate one Korean sentence describing the key issue."
             ),
         },
     ]
 
-    # LLM 호출
-    result = safe_generate(messages, max_new_tokens=250, temperature=0.4, top_p=0.9, do_sample=False)
+    result = safe_generate(
+        messages,
+        max_new_tokens=120,
+        temperature=0.4,
+        top_p=0.9,
+        do_sample=False
+    )
 
-    # 결과 정제
-    text = ""
-    if isinstance(result, list):
-        if isinstance(result[0], dict):
-            gen_text = result[0].get("generated_text", "")
-            if isinstance(gen_text, list) and len(gen_text) > 0:
-                last_msg = gen_text[-1]
-                text = last_msg.get("content", str(last_msg)) if isinstance(last_msg, dict) else str(last_msg)
-            else:
-                text = str(gen_text)
-    elif isinstance(result, dict):
-        text = result.get("generated_text", "")
-    elif isinstance(result, str):
-        text = result
+    # LLM 결과 파싱 함수
+    def extract_text(result):
+        # result 가 list
+        if isinstance(result, list):
+            # 첫 번째 요소는 dict → 그 안의 generated_text 접근
+            first = result[0]
+            if isinstance(first, dict):
+                gen = first.get("generated_text")
+                if isinstance(gen, list):
+                    # generated_text 내부에서 assistant role 찾기
+                    for msg in gen:
+                        if isinstance(msg, dict) and msg.get("role") == "assistant":
+                            return msg.get("content") or msg.get("text") or ""
+                    # fallback: 마지막 요소 content
+                    last = gen[-1]
+                    if isinstance(last, dict):
+                        return last.get("content") or last.get("text") or ""
+                    return str(last)
+            # fallback: list 마지막 요소 문자화
+            return str(result[-1])
+
+        # dict 구조
+        if isinstance(result, dict):
+            gen = result.get("generated_text")
+            if isinstance(gen, list):
+                for msg in gen:
+                    if msg.get("role") == "assistant":
+                        return msg.get("content") or msg.get("text") or ""
+                return str(gen[-1])
+            if isinstance(gen, str):
+                return gen
+
+        # string
+        if isinstance(result, str):
+            return result
+
+        # fallback
+        return str(result)
+    
+    text = extract_text(result)
 
     if not isinstance(text, str):
         text = str(text)
 
-    comment = text.strip().split("\n")[0].replace("�", "").strip()
-    if len(comment) < 5:
-        comment = f"{peer_age} 소비자 평균과 유사한 수준입니다."
+    comment = text.strip().replace("�", "")
+
+    if len(comment) < 3:
+        comment = "소비 비율 분석 결과를 생성하지 못했습니다."
 
     return comment
