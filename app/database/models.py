@@ -66,6 +66,11 @@ class ConsumptionCategoryEnum(enum.Enum):
 class LoanTypeEnum(enum.Enum):
     CREDIT = "CREDIT"       # 신용
     MORTGAGE = "MORTGAGE"   # 담보
+
+class LoanTransactionTypeEnum(enum.Enum):
+    LATE_INTEREST = "LATE_INTEREST"
+    LOAN = "LOAN"
+    REPAYMENT = "REPAYMENT"
     
 
 class RepaymentTypeEnum(enum.Enum):
@@ -229,17 +234,7 @@ class LoanTransaction(Base, BaseEntity):
 
     repayment_interest_amount = Column(Numeric(38, 2), nullable=True)
     repayment_principal_amount = Column(Numeric(38, 2), nullable=True)
-
-    transaction_type = Column(
-        Enum(
-            "LATE_INTEREST",
-            "LOAN",
-            "REPAYMENT",
-            name="loan_transaction_type"
-        ),
-        nullable=False
-    )
-
+    transaction_type = Column(Enum(LoanTransactionTypeEnum),nullable=False)
     loan_ledger_id = Column(
         BigInteger, 
         ForeignKey("loan_ledger.loan_ledger_id"), 

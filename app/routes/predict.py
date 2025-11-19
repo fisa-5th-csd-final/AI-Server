@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel, Field
 
-from app.database.connection import FeatureSessionLocal
+from app.database.connection import get_feature_db
 from app.services.model_service import predict_risk
 import logging
 
@@ -66,9 +66,7 @@ def load_user_loan_ids(db: Session, user_id: int):
 # POST /predict/user-risk
 # -------------------------------------------------------
 @router.post("/predict", response_model=UserRiskResponse)
-def predict_user_risk(request: UserPredictRequest):
-
-    db = FeatureSessionLocal()
+def predict_user_risk(request: UserPredictRequest, db: Session = Depends(get_feature_db)):
 
     try:
         user_id = request.user_id
