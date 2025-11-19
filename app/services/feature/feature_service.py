@@ -8,6 +8,8 @@ from app.database.models import (
     LoanLedger
 )
 
+from app.database.connection import get_session
+
 # ===============================
 # Helper Functions
 # ===============================
