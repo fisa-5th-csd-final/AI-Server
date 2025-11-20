@@ -5,7 +5,7 @@ import logging
 
 from app.database.connection import get_feature_db
 from app.schemas.simulation_schema import SimulationRequest, SimulationResponse
-from app.services.model_service import predict_risk
+from app.services.riskmodel.model_service import predict_risk
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

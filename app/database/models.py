@@ -278,3 +278,94 @@ class LoanLedger(Base, BaseEntity):
     user = relationship("User", back_populates="loan_ledgers")
     account = relationship("Account")
     loan_transactions = relationship("LoanTransaction", back_populates="loan_ledger")
+
+
+# ======================================================
+# LoanFeatures
+# ======================================================
+
+class LoanFeatures(Base):
+    __tablename__ = "loan_features"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    loan_ledger_id = Column(BigInteger, nullable=False)
+    user_id = Column(BigInteger, nullable=False)
+
+    created_at = Column(DateTime)
+
+    TOT_USE_AM_mean = Column(Numeric(20, 6))
+    TOT_USE_AM_max = Column(Numeric(20, 6))
+    TOT_USE_AM_min = Column(Numeric(20, 6))
+    TOT_USE_AM_std = Column(Numeric(20, 6))
+
+    CRDSL_USE_AM_mean = Column(Numeric(20, 6))
+    CRDSL_USE_AM_std = Column(Numeric(20, 6))
+
+    CNF_USE_AM_mean = Column(Numeric(20, 6))
+    CNF_USE_AM_std = Column(Numeric(20, 6))
+
+    credit_ratio_mean = Column(Numeric(20, 6))
+    credit_ratio_std = Column(Numeric(20, 6))
+    credit_ratio_last = Column(Numeric(20, 6))
+
+    check_ratio_mean = Column(Numeric(20, 6))
+    check_ratio_std = Column(Numeric(20, 6))
+    check_ratio_last = Column(Numeric(20, 6))
+
+    spend_growth_mean = Column(Numeric(20, 6))
+    spend_growth_std = Column(Numeric(20, 6))
+    spend_growth_last = Column(Numeric(20, 6))
+
+    spend_accel_mean = Column(Numeric(20, 6))
+    spend_accel_std = Column(Numeric(20, 6))
+    spend_accel_last = Column(Numeric(20, 6))
+
+    top3_ratio_sum_mean = Column(Numeric(20, 6))
+    top3_ratio_sum_std = Column(Numeric(20, 6))
+    top3_ratio_sum_last = Column(Numeric(20, 6))
+
+    top3_ratio_trend_mean = Column(Numeric(20, 6))
+    top3_ratio_trend_std = Column(Numeric(20, 6))
+    top3_ratio_trend_last = Column(Numeric(20, 6))
+
+    spending_entropy_mean = Column(Numeric(20, 6))
+    spending_entropy_std = Column(Numeric(20, 6))
+    spending_entropy_last = Column(Numeric(20, 6))
+
+    AGE = Column(Integer)
+    SEX_CD = Column(Integer)
+    MBR_RK = Column(String(10))
+
+    salary_mean = Column(Numeric(20, 6))
+    salary_max = Column(Numeric(20, 6))
+    salary_min = Column(Numeric(20, 6))
+    salary_std = Column(Numeric(20, 6))
+
+    balance_mean = Column(Numeric(20, 6))
+    balance_max = Column(Numeric(20, 6))
+    balance_min = Column(Numeric(20, 6))
+    balance_std = Column(Numeric(20, 6))
+
+    principal_amount_mean = Column(Numeric(20, 6))
+    principal_amount_max = Column(Numeric(20, 6))
+    principal_amount_min = Column(Numeric(20, 6))
+    principal_amount_std = Column(Numeric(20, 6))
+
+    remaining_principal_mean = Column(Numeric(20, 6))
+    remaining_principal_max = Column(Numeric(20, 6))
+    remaining_principal_min = Column(Numeric(20, 6))
+    remaining_principal_std = Column(Numeric(20, 6))
+
+    interest_rate_mean = Column(Numeric(20, 6))
+    interest_rate_max = Column(Numeric(20, 6))
+    interest_rate_min = Column(Numeric(20, 6))
+    interest_rate_std = Column(Numeric(20, 6))
+
+    repayment_ratio_mean = Column(Numeric(20, 6))
+    loan_type_mean = Column(Numeric(20, 6))
+    is_completed_mean = Column(Numeric(20, 6))
+
+    balance_to_loan_ratio = Column(Numeric(20, 6))
+    income_to_loan_ratio = Column(Numeric(20, 6))
+    debt_to_income_ratio = Column(Numeric(20, 6))
+    loan_usage_ratio = Column(Numeric(20, 6))

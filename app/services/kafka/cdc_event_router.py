@@ -1,16 +1,15 @@
+# app/services/kafka/cdc_event_router.py
+
 from app.services.kafka.cdc_event_model import CdcEvent
-from app.services.feature.feature_service import process_cdc_event as process_feature_cdc
+from app.services.kafka.cdc_save_data import apply_cdc_event_to_core_db
+from app.services.feature.update_feature import update_features_for_event
 
-# CDC 이벤트 라우터
+
 async def route_cdc_event(event: CdcEvent):
+    # 1) core_bank DB에 원본 데이터 저장
+    await apply_cdc_event_to_core_db(event.model_dump())
 
-    table = event.table.lower()
-    op = event.operation
-    after = event.after
+    # 2) 모든 CDC 이벤트마다 전체 feature 갱신
+    # await update_features_for_event(event)
 
-    # LoanLedger 변경 → Feature 업데이트
-    if table == "loan_ledger" and op in ("c", "u"):
-        await process_feature_cdc(event.model_dump())
-
-    else:
-        print(f"처리할 Consumer 없음: table={table}, op={op}")
+    print(f"[CDC Router] 처리 완료 → table={event.table}")

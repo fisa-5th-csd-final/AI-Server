@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from app.schemas.recommend_schema import RecommendRequest, RecommendResponse
-from app.services.llm_service_spending import generate_spending_comment
+from app.services.llm.llm_service_spending import generate_spending_comment
 import traceback
 from decimal import Decimal
 

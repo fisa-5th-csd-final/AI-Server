@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  ai-server:
+    container_name: ai-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ai-feature-db
+    networks:
+      - ai-net
+      - bank-net
+
+  ai-feature-db:
+    image: mysql:8.0
+    container_name: ai-feature-db
+    command: --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    env_file:
+      - .env
+    ports:
+      - "3307:3306"
+    volumes:
+      - ai-feature-data:/var/lib/mysql
+    healthcheck:
+      test:
+        ["CMD-SHELL", "mysqladmin ping -h localhost -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-net
+
+networks:
+  ai-net:
+
+  bank-net:
+    external: true
+
+volumes:
+  ai-feature-data:

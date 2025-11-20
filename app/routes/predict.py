@@ -4,7 +4,7 @@ from sqlalchemy import text
 from pydantic import BaseModel, Field
 
 from app.database.connection import get_feature_db
-from app.services.model_service import predict_risk
+from app.services.riskmodel.model_service import predict_risk
 import logging
 
 router = APIRouter()

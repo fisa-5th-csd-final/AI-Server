@@ -1,5 +1,3 @@
-# app/services/kafka/cdc_event_model.py
-
 from pydantic import BaseModel
 from typing import Optional, Any
 from datetime import datetime

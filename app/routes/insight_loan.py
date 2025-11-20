@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.database.connection import get_core_db
 from app.database.models import LoanLedger, LoanProduct, InterestRate
-from app.services.llm_service_loan import generate_loan_comment
+from app.services.llm.llm_service_loan import generate_loan_comment
 
 router = APIRouter()
 

@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Dict
 import logging
 
-from app.services.model_loader import get_model, THRESHOLD, MODEL_VERSION
+from app.services.riskmodel.model_loader import get_model, THRESHOLD, MODEL_VERSION
 
 logger = logging.getLogger(__name__)
 
