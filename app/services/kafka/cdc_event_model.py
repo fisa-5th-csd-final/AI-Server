@@ -9,4 +9,5 @@ class CdcEvent(BaseModel):
     operation: str
     before: Optional[Any]
     after: Optional[Any]
-    sourceTimestamp: datetime
+    # sourceTimestamp: datetime
+    sourceTimestamp: Optional[Any]

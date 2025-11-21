@@ -2,8 +2,6 @@
 
 from app.services.kafka.cdc_event_model import CdcEvent
 from app.services.kafka.cdc_save_data import apply_cdc_event_to_core_db
-from app.services.feature.update_feature import update_features_for_event
-
 
 async def route_cdc_event(event: CdcEvent):
     # 1) core_bank DB에 원본 데이터 저장
