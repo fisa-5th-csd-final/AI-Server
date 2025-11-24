@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from app.routes import predict, recommend, simulation, insight_loan
 from app.services.kafka.kafka_consumer import start_kafka_consumer
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime
+from app.services.feature.update_feature import update_features_daily
 
 # .env 불러오기
 load_dotenv()
