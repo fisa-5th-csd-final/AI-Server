@@ -3,14 +3,27 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+MODEL_PATH = "/app/models"
+
 try:
     logger.info("Loading Phi-3 model pipeline (this may take a while)...")
 
+    tokenizer = AutoTokenizer.from_pretrained(
+        MODEL_PATH,
+        local_files_only=True
+    )
+
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_PATH,
+        local_files_only=True
+    )
+
     generator = pipeline(
         "text-generation",
-        model="./app/models/phi3-mini-4k-instruct",
-        model_kwargs={"dtype": "auto"},
-        device_map="auto"
+        model=model,
+        tokenizer=tokenizer,
+        device_map="auto",
+        model_kwargs={"dtype": "auto"}
     )
 
     logger.info("Phi-3 model successfully loaded and ready to use.")
