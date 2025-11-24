@@ -14,7 +14,7 @@ services:
       - ai-feature-db
     networks:
       - ai-net
-      - bank-net
+      - core-bank-internal
 
   ai-feature-db:
     image: mysql:8.0
@@ -39,7 +39,7 @@ services:
 networks:
   ai-net:
 
-  bank-net:
+  core-bank-internal:
     external: true
 
 volumes:
