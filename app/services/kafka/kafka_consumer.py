@@ -1,16 +1,14 @@
-# app/services/kafka/kafka_consumer.py
-
 import asyncio
 import json
 from aiokafka import AIOKafkaConsumer
+import os
 
 from app.services.kafka.cdc_event_model import CdcEvent
 from app.services.kafka.cdc_event_router import route_cdc_event
 
-
-BOOTSTRAP_SERVERS = "kafka:9092"
-TOPIC = "bank.cdc.changelog"
-GROUP_ID = "bank-cdc-consumer"
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+TOPIC = os.getenv("KAFKA_TOPIC")
+GROUP_ID = os.getenv("KAFKA_GROUP_ID")
 
 
 async def start_kafka_consumer():

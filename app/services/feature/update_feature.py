@@ -1,77 +1,52 @@
-# app/services/feature/update_feature.py
-
-from app.database.connection import get_core_db, get_feature_db
+from app.database.connection import CoreSessionLocal, FeatureSessionLocal
 from app.database.models import LoanLedger
 from app.services.feature.feature_service import build_loan_features
 
 
-async def update_features_for_event(event):
-    """
-    CDC 이벤트가 올 때마다 전체 loan_ledger 기반으로 feature 재생성
-    (실시간 입력 방식일 때 사용)
-    """
-    print("[Feature] CDC 이벤트 수신 → 전체 Feature 업데이트 시작")
-
-    core_db = next(get_core_db())
-    feature_db = next(get_feature_db())
-
-    try:
-        loan_ledgers = core_db.query(LoanLedger).all()
-
-        for loan in loan_ledgers:
-            features = build_loan_features(loan.loan_ledger_id, core_db)
-
-            placeholders = ", ".join([f"{k} = :{k}" for k in features.keys()])
-
-            sql = f"""
-                INSERT INTO loan_features ({", ".join(features.keys())})
-                VALUES ({", ".join([":" + k for k in features.keys()])})
-                ON DUPLICATE KEY UPDATE {placeholders}
-            """
-
-            feature_db.execute(sql, features)
-
-        feature_db.commit()
-        print("[Feature] 전체 Feature 업데이트 완료")
-
-    finally:
-        core_db.close()
-        feature_db.close()
-
-
-
 async def update_features_daily():
-    """
-    매일 한번 전체 feature를 재계산하는 일일 배치 용도.
-    CDC 이벤트에는 반응 X
-    """
     print("[Feature] 일일 전체 Feature 업데이트 시작")
 
-    core_db = next(get_core_db())
-    feature_db = next(get_feature_db())
+    core_db = CoreSessionLocal()
 
     try:
+        # 1) core_bank 에서 전체 대출 조회
         loan_ledgers = core_db.query(LoanLedger).all()
+        print(f"[Feature] 총 {len(loan_ledgers)}개의 LoanLedger 처리 중...")
 
-        for loan in loan_ledgers:
-            features = build_loan_features(loan.loan_ledger_id, core_db)
+        for ledger in loan_ledgers:
+            loan_id = ledger.loan_ledger_id
 
-            placeholders = ", ".join([f"{k} = :{k}" for k in features.keys()])
+            # 2) 단일 loan_ledger → feature 계산
+            features = build_loan_features(loan_id, core_db)
 
-            sql = f"""
-                INSERT INTO loan_features ({", ".join(features.keys())})
-                VALUES ({", ".join([":" + k for k in features.keys()])})
-                ON DUPLICATE KEY UPDATE {placeholders}
-            """
+            # 3) feature DB에 UPSERT 적용
+            feature_db = FeatureSessionLocal()
 
-            feature_db.execute(sql, features)
+            try:
+                placeholders = ", ".join([f"{k} = :{k}" for k in features.keys()])
 
-        feature_db.commit()
+                sql = f"""
+                    INSERT INTO loan_features ({", ".join(features.keys())})
+                    VALUES ({", ".join([":" + k for k in features.keys()])})
+                    ON DUPLICATE KEY UPDATE {placeholders}
+                """
+
+                feature_db.execute(sql, features)
+                feature_db.commit()
+
+                print(f"[Feature] UPSERT 완료 → loan_ledger_id={loan_id}")
+
+            except Exception as fe:
+                feature_db.rollback()
+                print(f"[Feature] ERROR (loan_id={loan_id}):", fe)
+
+            finally:
+                feature_db.close()
+
         print("[Feature] 일일 전체 Feature 업데이트 완료")
 
     except Exception as e:
-        print("[Feature] ERROR", e)
+        print("[Feature] ERROR:", e)
 
     finally:
         core_db.close()
-        feature_db.close()
