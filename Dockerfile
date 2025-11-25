@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     wget \
     curl \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -15,7 +18,7 @@ COPY app/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY app /app/app
 
 EXPOSE 8000
 

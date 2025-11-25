@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - /home/ubuntu/phi3-mini-4k-instruct:/app/models
     env_file:
       - .env
     ports:
@@ -21,6 +23,8 @@ services:
     container_name: ai-feature-db
     command: --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+      --ssl=0
+      --require_secure_transport=OFF
     env_file:
       - .env
     ports:
