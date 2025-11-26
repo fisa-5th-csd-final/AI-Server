@@ -1,11 +1,27 @@
-# app/services/core/cdc_apply.py
-
+from datetime import datetime, timezone
 from app.database.connection import CoreSessionLocal
 from app.database.models import (
     User, Account, AccountTransaction, CardTransaction,
-    LoanLedger, LoanTransaction, LoanProduct, InterestRate
+    LoanLedger, LoanTransaction, LoanProduct, InterestRate, PreferInterest
 )
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy import DateTime
+
+def convert_timestamp(value):
+    """Debezium micosecond timestamp → Python datetime"""
+    if isinstance(value, int) and value > 10**12:
+        return datetime.fromtimestamp(value / 1_000_000, tz=timezone.utc)
+    return value
+
+def convert_datetime_fields(model, data: dict):
+    """Model 컬럼 중 datetime 타입만 찾아 변환"""
+    new_data = data.copy()
+    for column in model.__table__.columns:
+        if isinstance(column.type, DateTime):
+            col = column.name
+            if col in new_data and new_data[col] is not None:
+                new_data[col] = convert_timestamp(new_data[col])
+    return new_data
 
 TABLE_MODEL_MAP = {
     "user": User,
@@ -16,6 +32,7 @@ TABLE_MODEL_MAP = {
     "loan_transaction": LoanTransaction,
     "loan_product": LoanProduct,
     "interest_rate": InterestRate,
+    "prefer_interest": PreferInterest,
 }
 
 async def apply_cdc_event_to_core_db(event_dict):
@@ -35,6 +52,7 @@ async def apply_cdc_event_to_core_db(event_dict):
     try:
         # CREATE or UPDATE
         if op in ("c", "u"):
+            after = convert_datetime_fields(Model, after)
             stmt = insert(Model).values(after)
             update_stmt = stmt.on_duplicate_key_update(**after)
             db.execute(update_stmt)
