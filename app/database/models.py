@@ -109,7 +109,7 @@ class User(BaseEntity):
     income = Column(Numeric(38, 2), nullable=False)
     credit_level = Column(Enum(CreditRatingEnum), nullable=False)
     customer_level = Column(Enum(CustomerLevelEnum), nullable=False)
-    user_auth_id = Column(BigInteger, ForeignKey("user_auth.user_auth_id"), nullable=True)
+    user_auth_login_id = Column(BigInteger, ForeignKey("user_auth.user_auth_id"), nullable=True)
 
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
@@ -256,7 +256,7 @@ class LoanProduct(BaseEntity):
 # LoanTransaction
 # ======================================================
 
-class LoanTransaction(Base):
+class LoanTransaction(BaseEntity):
     __tablename__ = "loan_transaction"
 
     trxlid = Column(BigInteger, primary_key=True, autoincrement=True)
