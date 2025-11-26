@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+/venv
+app/venv
+**/venv/
+
+# Git
+.git
+.git/
+.gitignore
+.github/

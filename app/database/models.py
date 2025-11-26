@@ -4,6 +4,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.sql import func
 from datetime import datetime, timezone
 import enum
 
@@ -107,10 +108,11 @@ class User(Base, BaseEntity):
     income = Column(Numeric(38, 2), nullable=False)
     credit_level = Column(Enum(CreditRatingEnum), nullable=False)
     customer_level = Column(Enum(CustomerLevelEnum), nullable=False)
-    # user_auth_login_id = Column(String(255), unique=True, nullable=True)
+    user_auth_id = Column(BigInteger, ForeignKey("user_auth.user_auth_id"), nullable=True)
 
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
+    user_auth = relationship("UserAuth", uselist=False)
 
 
 # ============================================================
@@ -125,8 +127,15 @@ class Account(Base, BaseEntity):
     user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
     balance = Column(Numeric(38, 2), nullable=False, default=0)
     bank_code = Column(String(3), nullable=False)
+    is_for_income = Column(Boolean, nullable=False, default=False)
 
     user = relationship("User", back_populates="accounts")
+
+    loan_ledger = relationship(
+        "LoanLedger",
+        back_populates="account",
+        uselist=False
+    )
 
     account_transactions = relationship(
         "AccountTransaction",
@@ -160,6 +169,7 @@ class AccountTransaction(Base, BaseEntity):
     balance_after = Column(Numeric(38, 2), nullable=False)
     destination_account = Column(String(20), nullable=True)
     is_income = Column(Boolean, nullable=False)
+
     account = relationship("Account", back_populates="account_transactions")
 
 
@@ -237,7 +247,8 @@ class LoanProduct(Base, BaseEntity):
     interest_rates = relationship(
         "InterestRate",
         back_populates="loan_product",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        order_by="desc(InterestRate.created_at)"
     )
 
 # ======================================================
@@ -250,7 +261,7 @@ class LoanTransaction(Base):
     trxlid = Column(BigInteger, primary_key=True, autoincrement=True)
 
     amount = Column(Numeric(38, 2), nullable=False)
-    date = Column(DateTime, nullable=False)
+    date = Column(DateTime, nullable=False, server_default=func.now())
     remain_principal = Column(Numeric(38, 2), nullable=False)
 
     repayment_interest_amount = Column(Numeric(38, 2), nullable=True)
@@ -288,6 +299,7 @@ class LoanLedger(Base, BaseEntity):
     loan_end_date = Column(DateTime, nullable=False)
     overdue_count = Column(Integer, nullable=False)
     term = Column(Integer, nullable=False)
+    auto_deposit_enabled = Column(Boolean, nullable=False)
     account_id = Column(
         BigInteger,
         ForeignKey("account.account_id"),
@@ -297,7 +309,7 @@ class LoanLedger(Base, BaseEntity):
 
     loan_product = relationship("LoanProduct", back_populates="loan_ledgers")
     user = relationship("User", back_populates="loan_ledgers")
-    account = relationship("Account")
+    account = relationship("Account", back_populates="loan_ledger", uselist=False)
     loan_transactions = relationship("LoanTransaction", back_populates="loan_ledger")
 
 
