@@ -235,7 +235,7 @@ class PreferInterest(Base):
 # LoanProduct
 # ======================================================
 
-class LoanProduct(BaseEntity):
+class LoanProduct(Base):
     __tablename__ = "loan_product"
 
     loan_product_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -269,7 +269,7 @@ class LoanTransaction(Base):
     loan_ledger_id = Column(
         BigInteger, 
         ForeignKey("loan_ledger.loan_ledger_id"), 
-        nullable=False
+        nullable=True
     )
 
     loan_ledger = relationship("LoanLedger", back_populates="loan_transactions")
