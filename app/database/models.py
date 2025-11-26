@@ -201,6 +201,27 @@ class InterestRate(Base, BaseEntity):
 
     loan_product = relationship("LoanProduct", back_populates="interest_rates")
 
+
+# ======================================================
+# PreferInterest
+# ======================================================
+
+class PreferInterest(Base):
+    __tablename__ = "prefer_interest"
+
+    # 복합키 구성 (EmbeddedId 대체)
+    credit_rating = Column(Enum(CreditRatingEnum), primary_key=True)
+    customer_level = Column(Enum(CustomerLevelEnum), primary_key=True)
+
+    # 우대 금리
+    prefer_interest = Column(Numeric(38, 2), nullable=False)
+
+    def __init__(self, credit_rating, customer_level, prefer_interest):
+        self.credit_rating = credit_rating
+        self.customer_level = customer_level
+        self.prefer_interest = prefer_interest
+
+
 # ======================================================
 # LoanProduct
 # ======================================================
@@ -220,10 +241,10 @@ class LoanProduct(Base, BaseEntity):
     )
 
 # ======================================================
-# LoanProduct
+# LoanTransaction
 # ======================================================
 
-class LoanTransaction(Base, BaseEntity):
+class LoanTransaction(Base):
     __tablename__ = "loan_transaction"
 
     trxlid = Column(BigInteger, primary_key=True, autoincrement=True)
