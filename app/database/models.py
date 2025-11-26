@@ -112,7 +112,6 @@ class User(BaseEntity):
 
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
-    user_auth = relationship("UserAuth", uselist=False)
 
 
 # ============================================================
