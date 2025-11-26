@@ -109,7 +109,6 @@ class User(BaseEntity):
     income = Column(Numeric(38, 2), nullable=False)
     credit_level = Column(Enum(CreditRatingEnum), nullable=False)
     customer_level = Column(Enum(CustomerLevelEnum), nullable=False)
-    user_auth_login_id = Column(String(255), nullable=True)
 
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
