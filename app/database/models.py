@@ -14,9 +14,10 @@ import enum
 # ============================================================
 Base = declarative_base()
 
-class BaseEntity:
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+class BaseEntity(Base):
+    __abstract__ = True
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 
 
@@ -96,7 +97,7 @@ class InterestTypeEnum(enum.Enum):
 # User
 # ======================================================
 
-class User(Base, BaseEntity):
+class User(BaseEntity):
     __tablename__ = "user"
     
     user_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -119,7 +120,7 @@ class User(Base, BaseEntity):
 # Account
 # ============================================================
 
-class Account(Base, BaseEntity):
+class Account(BaseEntity):
     __tablename__ = "account"
     
     account_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -154,7 +155,7 @@ class Account(Base, BaseEntity):
 # AccountTransaction
 # ============================================================
 
-class AccountTransaction(Base, BaseEntity):
+class AccountTransaction(BaseEntity):
     __tablename__ = "transaction_account"
 
     trxaid = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -177,7 +178,7 @@ class AccountTransaction(Base, BaseEntity):
 # CardTransaction
 # ============================================================
 
-class CardTransaction(Base, BaseEntity):
+class CardTransaction(BaseEntity):
     __tablename__ = "transaction_card"
 
     trxcid = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -196,7 +197,7 @@ class CardTransaction(Base, BaseEntity):
 # InterestRate
 # ============================================================
 
-class InterestRate(Base, BaseEntity):
+class InterestRate(BaseEntity):
     __tablename__ = "interest_rate"
 
     interest_rate_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -236,7 +237,7 @@ class PreferInterest(Base):
 # LoanProduct
 # ======================================================
 
-class LoanProduct(Base, BaseEntity):
+class LoanProduct(BaseEntity):
     __tablename__ = "loan_product"
 
     loan_product_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -261,7 +262,7 @@ class LoanTransaction(Base):
     trxlid = Column(BigInteger, primary_key=True, autoincrement=True)
 
     amount = Column(Numeric(38, 2), nullable=False)
-    date = Column(DateTime, nullable=False, server_default=func.now())
+    date = Column(DateTime, nullable=False)
     remain_principal = Column(Numeric(38, 2), nullable=False)
 
     repayment_interest_amount = Column(Numeric(38, 2), nullable=True)
@@ -281,7 +282,7 @@ class LoanTransaction(Base):
 # LoanLedger
 # ======================================================
 
-class LoanLedger(Base, BaseEntity):
+class LoanLedger(BaseEntity):
     __tablename__ = "loan_ledger"
 
     loan_ledger_id = Column(BigInteger, primary_key=True, autoincrement=True)
