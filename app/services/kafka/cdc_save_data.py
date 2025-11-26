@@ -5,7 +5,7 @@ from app.database.models import (
     LoanLedger, LoanTransaction, LoanProduct, InterestRate, PreferInterest
 )
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import DateTime
+from sqlalchemy.sql.sqltypes import DateTime as SQLAlchemyDateTime
 
 def convert_timestamp(value):
     """Debezium micosecond timestamp → Python datetime"""
@@ -17,7 +17,7 @@ def convert_datetime_fields(model, data: dict):
     """Model 컬럼 중 datetime 타입만 찾아 변환"""
     new_data = data.copy()
     for column in model.__table__.columns:
-        if isinstance(column.type, DateTime):
+        if isinstance(column.type, SQLAlchemyDateTime):
             col = column.name
             if col in new_data and new_data[col] is not None:
                 new_data[col] = convert_timestamp(new_data[col])
