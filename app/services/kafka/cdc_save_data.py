@@ -7,6 +7,7 @@ from app.database.models import (
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.sql.sqltypes import DateTime as SQLAlchemyDateTime
 from sqlalchemy.sql.schema import ForeignKey
+from app.database.models import Base
 
 
 # ---------------------------------------------------------
@@ -58,7 +59,6 @@ def nullify_missing_foreign_keys(model, data):
             parent_table = fk.column.table
             parent_table_name = parent_table.name
 
-            from app.database.models import Base
             parent_model = Base._decl_class_registry.get(parent_table_name)
 
             if not parent_model:
