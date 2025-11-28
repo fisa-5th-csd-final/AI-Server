@@ -366,7 +366,7 @@ class LoanFeatures(Base):
 
     AGE = Column(Integer)
     SEX_CD = Column(Integer)
-    MBR_RK = Column(String(10))
+    MBR_RK = Column(Integer)
 
     salary_mean = Column(Numeric(20, 6))
     salary_max = Column(Numeric(20, 6))

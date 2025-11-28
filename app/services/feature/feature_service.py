@@ -51,7 +51,18 @@ def build_loan_features(loan_ledger_id: int, db: Session):
 
     age = (datetime.utcnow() - user.birthday).days // 365
     SEX_CD = getattr(user, "sex_cd", 0)
-    MBR_RK = getattr(user, "customer_level", 0)
+
+    CUSTOMER_LEVEL_MAP = {
+        "VVIP": 21,
+        "VIP": 22,
+        "PLATINUM": 23,
+        "GOLD": 24,
+        "NONE": 25,
+        "BRONZE": 25,
+        "SILVER": 25,
+    }
+    raw_level = getattr(user, "customer_level", None)
+    MBR_RK = CUSTOMER_LEVEL_MAP.get(raw_level, 25)
     income = float(user.income)
 
 
