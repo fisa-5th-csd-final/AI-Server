@@ -1,4 +1,4 @@
-from app.services.llm_loader import safe_generate
+from app.services.llm.llm_loader import safe_generate
 
 def generate_loan_comment(data: dict) -> str:
     # 안전한 값 세팅

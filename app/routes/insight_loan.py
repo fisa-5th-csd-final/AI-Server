@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.database.connection import get_core_db
 from app.database.models import LoanLedger, LoanProduct, InterestRate
-from app.services.llm_service_loan import generate_loan_comment
+from app.services.llm.llm_service_loan import generate_loan_comment
 
 router = APIRouter()
 
@@ -13,6 +13,7 @@ class LoanInsightRequest(BaseModel):
 
 
 class LoanInsightResponse(BaseModel):
+    loan_ledger_id: int = Field(..., description="분석한 loan_ledger_id")
     loan_name: str = Field(..., description="대출 상품명")
     comment: str = Field(..., description="LLM이 생성한 분석 코멘트")
     model_version: str = Field(..., description="LLM 모델 버전")
@@ -111,6 +112,7 @@ def insight_loan(request: LoanInsightRequest, db: Session = Depends(get_core_db)
         comment = "대출 분석 중 오류가 발생했습니다."
 
     return LoanInsightResponse(
+        loan_ledger_id=loan_ledger_id,
         loan_name=product.name,
         comment=comment,
         model_version="phi3-mini-4k-instruct"

@@ -6,13 +6,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 CORE_DB_URL = (
-    f"mysql+pymysql://{os.getenv('CORE_BANK_USER')}:{os.getenv('CORE_BANK_PW')}"
+    f"mysql+pymysql://{os.getenv('CORE_BANK_USER', 'root')}:{os.getenv('CORE_BANK_PW')}"
     f"@{os.getenv('CORE_BANK_HOST')}:{os.getenv('CORE_BANK_PORT')}/"
-    f"{os.getenv('CORE_BANK_DB')}?charset=utf8mb4"
+    f"{os.getenv('CORE_BANK_DB')}?charset=utf8mb4&ssl_disabled=true"
 )
 
 core_engine = create_engine(
     CORE_DB_URL,
+    connect_args={
+        "ssl": {
+            "fake_flag_to_enable_tls": False
+        }
+    },
     pool_pre_ping=True,
     pool_recycle=3600
 )
@@ -31,13 +36,18 @@ def get_core_db():
         db.close()
 
 FEATURE_DB_URL = (
-    f"mysql+pymysql://{os.getenv('FEATURE_DB_USER')}:{os.getenv('FEATURE_DB_PW')}"
+    f"mysql+pymysql://{os.getenv('FEATURE_DB_USER', 'root')}:{os.getenv('FEATURE_DB_PW')}"
     f"@{os.getenv('FEATURE_DB_HOST')}:{os.getenv('FEATURE_DB_PORT')}/"
-    f"{os.getenv('FEATURE_DB_NAME')}?charset=utf8mb4"
+    f"{os.getenv('FEATURE_DB_NAME')}?charset=utf8mb4&ssl_disabled=true"
 )
 
 feature_engine = create_engine(
     FEATURE_DB_URL,
+    connect_args={
+        "ssl": {
+            "fake_flag_to_enable_tls": False
+        }
+    },
     pool_pre_ping=True,
     pool_recycle=3600
 )

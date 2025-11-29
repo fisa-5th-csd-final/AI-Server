@@ -1,10 +1,12 @@
 fastapi
 uvicorn
 pydantic
-lightgbm
-joblib
+lightgbm==4.6.0
+scikit-learn==1.7.1
+joblib==1.5.1
 boto3
-numpy
+numpy==1.26.4
+aiokafka
 pandas
 requests
 transformers
@@ -15,3 +17,5 @@ matplotlib
 SQLAlchemy
 pymysql
 python-dotenv
+APScheduler==3.10.4
+cryptography

@@ -4,6 +4,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.sql import func
 from datetime import datetime, timezone
 import enum
 
@@ -13,9 +14,10 @@ import enum
 # ============================================================
 Base = declarative_base()
 
-class BaseEntity:
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+class BaseEntity(Base):
+    __abstract__ = True
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 
 
@@ -95,7 +97,7 @@ class InterestTypeEnum(enum.Enum):
 # User
 # ======================================================
 
-class User(Base, BaseEntity):
+class User(BaseEntity):
     __tablename__ = "user"
     
     user_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -107,7 +109,6 @@ class User(Base, BaseEntity):
     income = Column(Numeric(38, 2), nullable=False)
     credit_level = Column(Enum(CreditRatingEnum), nullable=False)
     customer_level = Column(Enum(CustomerLevelEnum), nullable=False)
-    # user_auth_login_id = Column(String(255), unique=True, nullable=True)
 
     accounts = relationship("Account", back_populates="user")
     loan_ledgers = relationship("LoanLedger", back_populates="user")
@@ -117,7 +118,7 @@ class User(Base, BaseEntity):
 # Account
 # ============================================================
 
-class Account(Base, BaseEntity):
+class Account(BaseEntity):
     __tablename__ = "account"
     
     account_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -125,8 +126,15 @@ class Account(Base, BaseEntity):
     user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
     balance = Column(Numeric(38, 2), nullable=False, default=0)
     bank_code = Column(String(3), nullable=False)
+    is_for_income = Column(Boolean, nullable=False, default=False)
 
     user = relationship("User", back_populates="accounts")
+
+    loan_ledger = relationship(
+        "LoanLedger",
+        back_populates="account",
+        uselist=False
+    )
 
     account_transactions = relationship(
         "AccountTransaction",
@@ -145,7 +153,7 @@ class Account(Base, BaseEntity):
 # AccountTransaction
 # ============================================================
 
-class AccountTransaction(Base, BaseEntity):
+class AccountTransaction(BaseEntity):
     __tablename__ = "transaction_account"
 
     trxaid = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -160,6 +168,7 @@ class AccountTransaction(Base, BaseEntity):
     balance_after = Column(Numeric(38, 2), nullable=False)
     destination_account = Column(String(20), nullable=True)
     is_income = Column(Boolean, nullable=False)
+
     account = relationship("Account", back_populates="account_transactions")
 
 
@@ -167,7 +176,7 @@ class AccountTransaction(Base, BaseEntity):
 # CardTransaction
 # ============================================================
 
-class CardTransaction(Base, BaseEntity):
+class CardTransaction(BaseEntity):
     __tablename__ = "transaction_card"
 
     trxcid = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -186,7 +195,7 @@ class CardTransaction(Base, BaseEntity):
 # InterestRate
 # ============================================================
 
-class InterestRate(Base, BaseEntity):
+class InterestRate(BaseEntity):
     __tablename__ = "interest_rate"
 
     interest_rate_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -201,11 +210,32 @@ class InterestRate(Base, BaseEntity):
 
     loan_product = relationship("LoanProduct", back_populates="interest_rates")
 
+
+# ======================================================
+# PreferInterest
+# ======================================================
+
+class PreferInterest(Base):
+    __tablename__ = "prefer_interest"
+
+    # 복합키 구성 (EmbeddedId 대체)
+    credit_rating = Column(Enum(CreditRatingEnum), primary_key=True)
+    customer_level = Column(Enum(CustomerLevelEnum), primary_key=True)
+
+    # 우대 금리
+    prefer_interest = Column(Numeric(38, 2), nullable=False)
+
+    def __init__(self, credit_rating, customer_level, prefer_interest):
+        self.credit_rating = credit_rating
+        self.customer_level = customer_level
+        self.prefer_interest = prefer_interest
+
+
 # ======================================================
 # LoanProduct
 # ======================================================
 
-class LoanProduct(Base, BaseEntity):
+class LoanProduct(Base):
     __tablename__ = "loan_product"
 
     loan_product_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -216,14 +246,15 @@ class LoanProduct(Base, BaseEntity):
     interest_rates = relationship(
         "InterestRate",
         back_populates="loan_product",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        order_by="desc(InterestRate.created_at)"
     )
 
 # ======================================================
-# LoanProduct
+# LoanTransaction
 # ======================================================
 
-class LoanTransaction(Base, BaseEntity):
+class LoanTransaction(Base):
     __tablename__ = "loan_transaction"
 
     trxlid = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -238,7 +269,7 @@ class LoanTransaction(Base, BaseEntity):
     loan_ledger_id = Column(
         BigInteger, 
         ForeignKey("loan_ledger.loan_ledger_id"), 
-        nullable=False
+        nullable=True
     )
 
     loan_ledger = relationship("LoanLedger", back_populates="loan_transactions")
@@ -249,7 +280,7 @@ class LoanTransaction(Base, BaseEntity):
 # LoanLedger
 # ======================================================
 
-class LoanLedger(Base, BaseEntity):
+class LoanLedger(BaseEntity):
     __tablename__ = "loan_ledger"
 
     loan_ledger_id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -267,6 +298,7 @@ class LoanLedger(Base, BaseEntity):
     loan_end_date = Column(DateTime, nullable=False)
     overdue_count = Column(Integer, nullable=False)
     term = Column(Integer, nullable=False)
+    auto_deposit_enabled = Column(Boolean, nullable=False)
     account_id = Column(
         BigInteger,
         ForeignKey("account.account_id"),
@@ -276,5 +308,96 @@ class LoanLedger(Base, BaseEntity):
 
     loan_product = relationship("LoanProduct", back_populates="loan_ledgers")
     user = relationship("User", back_populates="loan_ledgers")
-    account = relationship("Account")
+    account = relationship("Account", back_populates="loan_ledger", uselist=False)
     loan_transactions = relationship("LoanTransaction", back_populates="loan_ledger")
+
+
+# ======================================================
+# LoanFeatures
+# ======================================================
+
+class LoanFeatures(Base):
+    __tablename__ = "loan_features"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    loan_ledger_id = Column(BigInteger, nullable=False)
+    user_id = Column(BigInteger, nullable=False)
+
+    created_at = Column(DateTime)
+
+    TOT_USE_AM_mean = Column(Numeric(20, 6))
+    TOT_USE_AM_max = Column(Numeric(20, 6))
+    TOT_USE_AM_min = Column(Numeric(20, 6))
+    TOT_USE_AM_std = Column(Numeric(20, 6))
+
+    CRDSL_USE_AM_mean = Column(Numeric(20, 6))
+    CRDSL_USE_AM_std = Column(Numeric(20, 6))
+
+    CNF_USE_AM_mean = Column(Numeric(20, 6))
+    CNF_USE_AM_std = Column(Numeric(20, 6))
+
+    credit_ratio_mean = Column(Numeric(20, 6))
+    credit_ratio_std = Column(Numeric(20, 6))
+    credit_ratio_last = Column(Numeric(20, 6))
+
+    check_ratio_mean = Column(Numeric(20, 6))
+    check_ratio_std = Column(Numeric(20, 6))
+    check_ratio_last = Column(Numeric(20, 6))
+
+    spend_growth_mean = Column(Numeric(20, 6))
+    spend_growth_std = Column(Numeric(20, 6))
+    spend_growth_last = Column(Numeric(20, 6))
+
+    spend_accel_mean = Column(Numeric(20, 6))
+    spend_accel_std = Column(Numeric(20, 6))
+    spend_accel_last = Column(Numeric(20, 6))
+
+    top3_ratio_sum_mean = Column(Numeric(20, 6))
+    top3_ratio_sum_std = Column(Numeric(20, 6))
+    top3_ratio_sum_last = Column(Numeric(20, 6))
+
+    top3_ratio_trend_mean = Column(Numeric(20, 6))
+    top3_ratio_trend_std = Column(Numeric(20, 6))
+    top3_ratio_trend_last = Column(Numeric(20, 6))
+
+    spending_entropy_mean = Column(Numeric(20, 6))
+    spending_entropy_std = Column(Numeric(20, 6))
+    spending_entropy_last = Column(Numeric(20, 6))
+
+    AGE = Column(Integer)
+    SEX_CD = Column(Integer)
+    MBR_RK = Column(Integer)
+
+    salary_mean = Column(Numeric(20, 6))
+    salary_max = Column(Numeric(20, 6))
+    salary_min = Column(Numeric(20, 6))
+    salary_std = Column(Numeric(20, 6))
+
+    balance_mean = Column(Numeric(20, 6))
+    balance_max = Column(Numeric(20, 6))
+    balance_min = Column(Numeric(20, 6))
+    balance_std = Column(Numeric(20, 6))
+
+    principal_amount_mean = Column(Numeric(20, 6))
+    principal_amount_max = Column(Numeric(20, 6))
+    principal_amount_min = Column(Numeric(20, 6))
+    principal_amount_std = Column(Numeric(20, 6))
+
+    remaining_principal_mean = Column(Numeric(20, 6))
+    remaining_principal_max = Column(Numeric(20, 6))
+    remaining_principal_min = Column(Numeric(20, 6))
+    remaining_principal_std = Column(Numeric(20, 6))
+
+    interest_rate_mean = Column(Numeric(20, 6))
+    interest_rate_max = Column(Numeric(20, 6))
+    interest_rate_min = Column(Numeric(20, 6))
+    interest_rate_std = Column(Numeric(20, 6))
+
+    repayment_ratio_mean = Column(Numeric(20, 6))
+    loan_type_mean = Column(Numeric(20, 6))
+    is_completed_mean = Column(Numeric(20, 6))
+
+    balance_to_loan_ratio = Column(Numeric(20, 6))
+    income_to_loan_ratio = Column(Numeric(20, 6))
+    debt_to_income_ratio = Column(Numeric(20, 6))
+    loan_usage_ratio = Column(Numeric(20, 6))

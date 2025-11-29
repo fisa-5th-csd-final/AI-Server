@@ -1,4 +1,4 @@
-from app.services.llm_loader import safe_generate
+from app.services.llm.llm_loader import safe_generate
 from decimal import Decimal
 
 def generate_spending_comment(
